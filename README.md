@@ -1,36 +1,19 @@
-# CSS Visual Editor Boilerplate
+# CSS Editor
 
-Boilerplate i documentació d'un sistema d'edició visual d'estils segur, desacoblat i multi-projecte.
+Repositori canònic de l'editor visual CSS i la seva documentació.
 
-## Què inclou
+## Estructura
 
-- Editor separat, pensat per React + TypeScript
-- Mòdul lleuger per instal·lar a la web a editar
-- Comunicació local via `BroadcastChannel`
-- Protocol de missatges compartit
-- Sistema d'estils segur basat en `data-editable`
-- Model multi-projecte amb importació i exportació de JSON
+- `Programa/` - aplicació principal (editor React, preview-module, proves i configuració)
+- `docs/` - documentació canònica del sistema
 
-## Documentació
+## Flux actual
 
-La documentació principal és a `/docs`.
+- l'editor s'executa localment
+- la preview es pot obrir en una finestra remota
+- la comunicació actual entre editor i preview es fa amb `window.postMessage`
 
-Ordre recomanat de lectura:
+## Punt d'entrada recomanat
 
-1. `01-overview.md`
-2. `02-architecture.md`
-3. `03-startup-flows.md`
-4. `04-editor.md`
-5. `05-preview.md`
-6. `06-communication.md`
-7. `07-data-format.md`
-8. `08-editor-frontend-structure.md`
-9. `09-preview-module-structure.md`
-
-## Principis del projecte
-
-- No hi ha CSS lliure
-- El JSON és la font de veritat
-- La web no crea projectes; només exposa context i aplica estils
-- L'editor és qui crea, carrega, valida, exporta i gestiona projectes
-- La comunicació ha de ser intercanviable
+- aplicació: `Programa/README.md`
+- documentació: `docs/README.md`
