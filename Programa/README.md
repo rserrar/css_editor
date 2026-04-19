@@ -14,12 +14,14 @@ Prerequisit: Node.js.
 
 ## Prova local editor + preview
 
-La preview de mostra ja queda servida des del mateix origen a:
+Flux recomanat actual:
 
-- `http://127.0.0.1:3000/example-web.html?session=PROVA123`
-- `http://127.0.0.1:3000/?session=PROVA123`
+1. arrenca l'editor amb `npm run dev`
+2. obre `http://127.0.0.1:3000/`
+3. escriu la URL de la web o carrega un projecte existent
+4. l'editor obre la preview automàticament en una finestra nova i hi afegeix la sessió necessària
 
-Aquest flux replica la guia de `TEST.md` i serveix com a prova local del sistema.
+També pots restaurar una sessió guardada automàticament si hi ha draft disponible.
 
 ## Scripts
 

@@ -19,6 +19,13 @@ window.addEventListener('message', listener)
 - Depèn de `window.opener` / referència de finestra
 - Cal validar `origin` i `sessionId`
 
+## Flux recomanat
+
+- l'usuari obre l'editor
+- l'editor obre la preview amb la URL final i la sessió correcta
+- la preview respon a l'editor via `window.opener`
+- si hi ha un draft o projecte existent, l'editor pot reobrir la mateixa web automàticament
+
 ## Futur
 
 ### WebSocket

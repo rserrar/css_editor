@@ -52,7 +52,7 @@ Exemple:
 
 - llegir `sessionId`
 - resoldre configuració opcional
-- inicialitzar el canal
+- inicialitzar la comunicació amb la finestra editora
 
 ### Comunicació
 
@@ -61,6 +61,8 @@ Exemple:
 - tornar a anunciar-se quan calgui per evitar timings fràgils
 
 Actualment el transport principal és `window.postMessage` entre l'editor que obre la preview i la mateixa finestra de preview.
+
+En el flux principal, la preview no s'ha d'obrir manualment amb `?session=...`; l'editor s'encarrega d'obrir-la amb la sessió correcta.
 
 ### DOM
 

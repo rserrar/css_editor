@@ -40,6 +40,8 @@ Responsabilitats:
 - mantenir la configuració d'estils
 - exportar i importar fitxers JSON
 - enviar canvis a la preview
+- obrir automàticament la preview a partir d'una URL o d'un projecte amb `baseUrl`
+- restaurar sessions o drafts anteriors si existeixen
 
 ### Mòdul de web / preview
 
@@ -67,6 +69,8 @@ Capa comuna amb:
 Actualment: `window.postMessage`
 
 Futur possible: `WebSocket`
+
+El flux principal actual assumeix que l'editor obre la preview i manté la relació entre finestres.
 
 ## Principis clau
 

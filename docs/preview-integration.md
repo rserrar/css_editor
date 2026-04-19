@@ -51,7 +51,7 @@ Exemple recomanat amb configuracio explicita:
 
 ## 3. `sessionId`
 
-El modul llegeix la sessio des del query string:
+El modul llegeix la sessio des del query string. En el flux principal actual, aquest paràmetre l'afegeix automàticament l'editor quan obre la preview.
 
 ```txt
 https://client-site.test/page?session=PROVA123
@@ -110,9 +110,10 @@ Perquè `selected` i `open` funcionin realment, la web ha d'exposar atributs com
 ## 7. Prova local rapida
 
 1. `npm run dev` a `Programa`
-2. obre `http://127.0.0.1:3000/example-web.html?session=PROVA123`
-3. obre `http://127.0.0.1:3000/?session=PROVA123`
-4. comprova connexio, targets, canvi de color i highlight
+2. obre `http://127.0.0.1:3000/`
+3. escriu `http://127.0.0.1:3000/example-web.html`
+4. prem `Començar Edició`
+5. comprova connexio, targets, canvi de color i highlight
 
 També pots passar:
 
@@ -123,6 +124,7 @@ npm run test:e2e
 ## 8. Errors tipics
 
 - no hi ha connexio: editor i preview no comparteixen origen o `session`
+- la preview no s'obre: el navegador ha bloquejat la finestra emergent
 - no surten targets: falten `data-editable` o s'han deixat buits
 - incompatibilitat de lloc: `siteKey` no coincideix entre projecte i web
 - no veus logs: `debug` no esta activat
@@ -130,7 +132,7 @@ npm run test:e2e
 ## 9. Checklist minima
 
 - cada zona editable te `data-editable` semantic i estable
-- la preview s'obre amb `?session=...`
+- l'editor obre la preview i hi injecta `?session=...` automàticament
 - `siteKey` queda definit explicitament si la web es desplega en diversos entorns
 - l'editor mostra `Preview Connectada`
 - un `style:update` s'aplica i un `style:remove` es neteja correctament

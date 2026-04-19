@@ -29,7 +29,7 @@ Pantalla inicial:
 ### A1. Crear projecte nou
 
 1. l'usuari introdueix la URL de la web
-2. l'editor obre o connecta la preview
+2. l'editor obre automàticament la preview en una finestra nova
 3. es fa el handshake inicial
 4. la web respon amb el seu context
 5. l'editor valida la connexió
@@ -40,34 +40,28 @@ Pantalla inicial:
 
 1. l'usuari puja el fitxer JSON
 2. l'editor valida l'esquema del fitxer
-3. l'editor mostra un resum del projecte
-4. l'usuari pot connectar-se a la web associada o continuar sense connexió
+3. l'editor mostra un resum del projecte o permet restaurar draft si escau
+4. si el projecte té `baseUrl`, l'editor pot obrir la web associada automàticament
 5. si hi ha connexió, es valida compatibilitat
 6. l'editor carrega la configuració i comença l'edició
 
-## Flux B: inici des de la web
+## Flux B: restaurar sessió o projecte existent
 
-La web obre l'editor i li passa el `sessionId`.
+La pantalla inicial també pot partir d'una sessió prèvia guardada.
 
-Pantalla inicial de l'editor:
+### B1. Restaurar draft
 
-- Crear projecte nou per aquesta web
-- Carregar projecte existent
-
-### B1. Crear projecte nou
-
-1. l'editor demana informació inicial a la web
-2. rep la URL, `siteKey` i `targets`
-3. crea un nou projecte amb aquestes dades
-4. comença l'edició
+1. l'editor detecta un draft a `localStorage`
+2. ofereix restaurar-lo o descartar-lo
+3. si es restaura, recupera projecte i configuració
+4. l'usuari pot reobrir la preview amb la `baseUrl` associada si cal
 
 ### B2. Carregar projecte existent
 
-1. l'editor demana informació inicial a la web
-2. l'usuari puja el fitxer JSON
-3. l'editor valida compatibilitat entre JSON i web
-4. si és compatible, aplica la configuració
-5. si no és compatible, mostra un avís i permet cancel·lar o continuar sense connexió
+1. l'usuari puja el fitxer JSON
+2. l'editor valida compatibilitat i format
+3. si el projecte té `baseUrl`, l'editor pot obrir la preview automàticament
+4. si no hi ha connexió, l'edició local continua sent possible
 
 ## Estat final comú
 

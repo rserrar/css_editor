@@ -14,8 +14,9 @@ crypto.randomUUID()
 
 ## Passat via URL
 
+El `sessionId` s'afegeix automàticament quan l'editor obre la preview.
+
 ```txt
-/editor?session=<sessionId>
 /preview?session=<sessionId>
 ```
 
@@ -26,6 +27,8 @@ La sessió actual es basa en:
 - `sessionId` compartit per URL
 - finestra de preview oberta des de l'editor
 - comunicació via `window.postMessage`
+
+L'usuari no ha d'escriure manualment `?session=...` en el flux normal.
 
 ## Diferència entre sessió i projecte
 

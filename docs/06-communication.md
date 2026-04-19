@@ -10,6 +10,8 @@ La comunicació actual es fa entre la finestra de l'editor i la finestra de prev
 
 La preview ha d'haver estat oberta des de l'editor o bé mantenir una referència vàlida via `window.opener`.
 
+En el flux normal d'ús, l'usuari no obre manualment dues finestres ni escriu la sessió a mà: l'editor obre la preview i hi injecta el `sessionId` necessari.
+
 ## Format base de missatge
 
 Tots els missatges comparteixen aquest shape mínim:
@@ -146,12 +148,12 @@ Shape:
 
 ## Flux real recomanat
 
-1. una finestra envia `hello`
-2. la preview anuncia `hello` + `config:request`
-3. l'editor envia `preview:info:request`
-4. la preview respon `preview:info:response`
-5. la preview pot demanar `config:request`
-6. l'editor respon amb `config:replaceAll`
+1. l'usuari obre l'editor
+2. l'editor obre la preview amb `window.open(...)` i hi afegeix `?session=...`
+3. la preview anuncia `hello` + `config:request`
+4. l'editor envia `preview:info:request`
+5. la preview respon `preview:info:response`
+6. l'editor envia `config:replaceAll` quan cal
 7. durant l'edició s'envien `style:update`, `style:remove` i `highlight`
 
 ## Regles del protocol
