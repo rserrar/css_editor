@@ -28,6 +28,12 @@ El sistema està pensat perquè a la web del client només calgui injectar `prev
 - la comunicació actual entre editor i preview es fa amb `window.postMessage`
 - l'editor pot restaurar una sessió o draft anterior si n'hi ha un de disponible
 
+## Prova local ràpida
+
+Hi ha una demo funcional local escrivint aquesta URL dins l'editor:
+
+- `http://127.0.0.1:3000/example-web.html`
+
 ## Punt d'entrada recomanat
 
 - aplicació: `Programa/README.md`
