@@ -1,0 +1,2286 @@
+# Informe del Projecte: editor css
+_Generat el 2026-04-17 23:09:26_
+
+## Resum
+- **Fitxers seleccionats:** 40
+- **Directori base:** `C:\proj\editor css`
+
+## Estructura de Fitxers
+```
+C:\proj\editor css
+```
+
+<div class="file-tree-container"><strong>editor css</strong><ul><li class="file">README.md</li><li class="folder">docs<ul><li class="file">01-overview.md</li><li class="file">02-architecture.md</li><li class="file">03-editor.md</li><li class="file">03-startup-flows.md</li><li class="file">04-editor.md</li><li class="file">04-preview.md</li><li class="file">05-communication.md</li><li class="file">05-preview.md</li><li class="file">06-communication.md</li><li class="file">06-style-system.md</li><li class="file">07-data-format.md</li><li class="file">08-style-system.md</li><li class="file">08-transport.md</li><li class="file">09-future-improvements.md</li><li class="file">09-transport.md</li><li class="file">10-editor-state.md</li><li class="file">11-react-components.md</li><li class="file">12-style-application.md</li><li class="file">13-highlight-system.md</li><li class="file">14-session-management.md</li><li class="file">15-editor-frontend-structure.md</li><li class="file">16-preview-module-structure.md</li><li class="file">17-compatibility-and-validation.md</li></ul></li><li class="folder">editor<ul><li class="file">index.html</li><li class="file">package.json</li><li class="folder">src<ul><li class="file">App.tsx</li><li class="folder">components<ul><li class="file">ConnectionStatus.tsx</li><li class="file">StylePanel.tsx</li><li class="file">TargetSelector.tsx</li></ul></li><li class="file">main.tsx</li><li class="file">styles.css</li></ul></li><li class="file">tsconfig.json</li><li class="file">vite.config.ts</li></ul></li><li class="folder">preview<ul><li class="file">index.html</li><li class="file">preview.ts</li></ul></li><li class="folder">shared<ul><li class="file">css.ts</li><li class="file">messages.ts</li><li class="file">style-schema.ts</li></ul></li><li class="folder">transport<ul><li class="file">broadcast-channel.ts</li></ul></li></ul></div>
+
+## Contingut dels Fitxers
+=====
+## README.md
+=====
+```md
+# CSS Visual Editor Boilerplate
+
+Boilerplate i documentació d'un sistema d'edició visual d'estils segur, desacoblat i multi-projecte.
+
+## Què inclou
+
+- Editor separat, pensat per React + TypeScript
+- Mòdul lleuger per instal·lar a la web a editar
+- Comunicació local via `BroadcastChannel`
+- Protocol de missatges compartit
+- Sistema d'estils segur basat en `data-editable`
+- Model multi-projecte amb importació i exportació de JSON
+
+## Documentació
+
+La documentació principal és a `/docs`.
+
+Ordre recomanat de lectura:
+
+1. `01-overview.md`
+2. `02-architecture.md`
+3. `03-startup-flows.md`
+4. `04-editor.md`
+5. `05-preview.md`
+6. `06-communication.md`
+7. `07-data-format.md`
+8. `08-editor-frontend-structure.md`
+9. `09-preview-module-structure.md`
+
+## Principis del projecte
+
+- No hi ha CSS lliure
+- El JSON és la font de veritat
+- La web no crea projectes; només exposa context i aplica estils
+- L'editor és qui crea, carrega, valida, exporta i gestiona projectes
+- La comunicació ha de ser intercanviable
+
+```
+
+=====
+## docs/01-overview.md
+=====
+```md
+# Overview
+
+## Objectiu
+
+Aquest projecte defineix un sistema d'edició visual d'estils CSS segur, reutilitzable i pensat per a usuaris finals no tècnics.
+
+L'editor funciona en una finestra o pantalla independent de la web. La web a editar continua sent neta i no s'omple de formularis d'administració.
+
+## Abast funcional
+
+El sistema permet editar només propietats visuals segures, com ara:
+
+- tipografia
+- colors
+- marges i paddings
+- vores
+- border radius
+
+Queden fora propietats estructurals o perilloses, com ara:
+
+- `display`
+- `position`
+- `flex`
+- `grid`
+- `width`
+- `height`
+- `transform`
+
+## Components principals
+
+### Editor
+
+Aplicació independent, idealment en React + TypeScript.
+
+Responsabilitats:
+
+- crear projectes nous
+- carregar projectes existents
+- validar compatibilitat amb la web
+- mantenir la configuració d'estils
+- exportar i importar fitxers JSON
+- enviar canvis a la preview
+
+### Mòdul de web / preview
+
+Codi instal·lat a la web que es vol editar.
+
+Responsabilitats:
+
+- anunciar-se a l'editor
+- exposar informació del context real de la web
+- detectar els `data-editable`
+- aplicar estils en viu
+- ressaltar elements
+
+### Shared
+
+Capa comuna amb:
+
+- tipus de missatges
+- models de dades
+- validacions bàsiques
+- helpers de CSS
+
+### Transport
+
+Actualment: `BroadcastChannel`
+
+Futur possible: `WebSocket`
+
+## Principis clau
+
+- No hi ha CSS lliure
+- El JSON és la font de veritat
+- La web no es modifica estructuralment
+- El CSS s'aplica amb un `<style id="live-editor-styles">`
+- La identificació d'elements es fa amb `data-editable`
+- El sistema és multi-projecte
+- La comunicació està desacoblada del frontend
+
+```
+
+=====
+## docs/02-architecture.md
+=====
+```md
+# Arquitectura general
+
+## Visió global
+
+El sistema es divideix en dues aplicacions desacoblades:
+
+- editor
+- web / preview
+
+La comunicació entre les dues es fa per protocol de missatges i un transport substituïble.
+
+## Responsabilitats per capa
+
+| Capa | Responsabilitat |
+|---|---|
+| Editor | Crear, carregar, validar i editar projectes |
+| Preview | Exposar context i aplicar configuració |
+| Shared | Definir contractes comuns |
+| Transport | Enviar i rebre missatges |
+
+## Regla d'or
+
+La web no crea projectes.
+
+La web només:
+
+- respon qui és
+- informa de la seva URL i context
+- informa dels `targets` editables
+- aplica una configuració rebuda
+
+L'editor és qui:
+
+- crea projectes nous
+- carrega projectes existents
+- exporta i importa JSON
+- valida compatibilitats
+- controla la sessió d'edició
+
+## Model conceptual
+
+### Projecte
+
+Identitat estable d'una web editable.
+
+### Sessió
+
+Context temporal de connexió entre editor i web.
+
+### Configuració
+
+Mapa d'estils segurs per `target`.
+
+### Preview info
+
+Informació que la web retorna durant el handshake inicial.
+
+## Font de veritat
+
+La font de veritat és sempre el JSON de projecte/configuració.
+
+La preview no conserva una lògica de negoci pròpia: reconstrueix el CSS a partir d'aquesta configuració.
+
+```
+
+=====
+## docs/03-editor.md
+=====
+```md
+# Editor (React)
+
+## Objectiu
+
+Permetre a l’usuari modificar estils visuals de manera segura.
+
+## Funcionalitats mínimes
+
+- Seleccionar element editable
+- Modificar propietats de tipografia
+- Modificar espaiats
+- Modificar colors
+- Modificar vores
+- Enviar canvis en temps real
+- Mantenir estat JSON
+
+## Estat principal
+
+```ts
+type StyleConfig = Record<string, EditableStyleSet>;
+```
+
+## Components suggerits
+
+- `App`
+- `TargetSelector`
+- `StylePanel`
+- `TypographyEditor`
+- `SpacingEditor`
+- `BorderEditor`
+- `ColorEditor`
+- `ConnectionStatus`
+
+## Flux
+
+1. L’usuari modifica un control.
+2. S’actualitza l’estat local.
+3. S’envia `style:update`.
+4. Opcionalment, es pot aplicar `debounce`.
+
+## Bones pràctiques
+
+- No generar CSS des de la UI.
+- Només treballar amb JSON.
+- Validar propietats abans d’enviar.
+
+```
+
+=====
+## docs/03-startup-flows.md
+=====
+```md
+# Fluxos d'inici
+
+## Dues decisions, quatre casos
+
+El sistema té dues decisions inicials:
+
+1. des d'on s'inicia
+2. què es vol fer
+
+### Des d'on s'inicia
+
+- des de l'editor
+- des de la web
+
+### Què es vol fer
+
+- crear projecte nou
+- obrir projecte existent
+
+Això dona quatre casos, però el model mental recomanat són dues decisions successives.
+
+## Flux A: inici des de l'editor
+
+Pantalla inicial:
+
+- Crear projecte nou
+- Obrir projecte existent
+
+### A1. Crear projecte nou
+
+1. l'usuari introdueix la URL de la web
+2. l'editor obre o connecta la preview
+3. es fa el handshake inicial
+4. la web respon amb el seu context
+5. l'editor valida la connexió
+6. l'editor crea el projecte nou
+7. comença l'edició
+
+### A2. Obrir projecte existent
+
+1. l'usuari puja el fitxer JSON
+2. l'editor valida l'esquema del fitxer
+3. l'editor mostra un resum del projecte
+4. l'usuari pot connectar-se a la web associada o continuar sense connexió
+5. si hi ha connexió, es valida compatibilitat
+6. l'editor carrega la configuració i comença l'edició
+
+## Flux B: inici des de la web
+
+La web obre l'editor i li passa el `sessionId`.
+
+Pantalla inicial de l'editor:
+
+- Crear projecte nou per aquesta web
+- Carregar projecte existent
+
+### B1. Crear projecte nou
+
+1. l'editor demana informació inicial a la web
+2. rep la URL, `siteKey` i `targets`
+3. crea un nou projecte amb aquestes dades
+4. comença l'edició
+
+### B2. Carregar projecte existent
+
+1. l'editor demana informació inicial a la web
+2. l'usuari puja el fitxer JSON
+3. l'editor valida compatibilitat entre JSON i web
+4. si és compatible, aplica la configuració
+5. si no és compatible, mostra un avís i permet cancel·lar o continuar sense connexió
+
+## Estat final comú
+
+Independentment del punt d'entrada, el sistema ha de convergir a un mateix estat:
+
+- un projecte carregat o creat
+- una configuració disponible
+- una sessió de comunicació activa o pendent
+- un context de web conegut o absent
+
+```
+
+=====
+## docs/04-editor.md
+=====
+```md
+# Editor
+
+## Objectiu
+
+L'editor és l'aplicació principal del sistema. Ha de ser multi-projecte, desacoblada i amb un frontend net.
+
+## Responsabilitats
+
+- crear projectes nous
+- obrir projectes existents
+- mantenir la configuració d'estils
+- exportar i importar projectes
+- connectar amb la preview
+- validar compatibilitat entre projecte i web
+- enviar canvis d'estil en temps real
+
+## Requisits de disseny intern
+
+El frontend no ha de contenir la lògica de negoci principal.
+
+Els components React han de:
+
+- mostrar estat
+- recollir entrades d'usuari
+- cridar accions del controlador
+
+No han de:
+
+- construir missatges manualment
+- decidir compatibilitats
+- parsejar fitxers JSON complexos
+- manipular directament el transport
+
+## Estat de domini mínim
+
+- projecte actual
+- configuració actual
+- informació de la preview connectada
+- estat de connexió
+
+## Estat de UI mínim
+
+- target seleccionat
+- panell actiu
+- errors temporals
+- pantalla inicial activa
+
+## Funcionalitats mínimes
+
+- pantalla d'inici
+- crear projecte nou
+- obrir projecte existent
+- selector de target
+- editors de tipografia, colors, espaiat i vores
+- exportació a JSON
+- importació de JSON
+- estat de connexió amb la preview
+
+```
+
+=====
+## docs/04-preview.md
+=====
+```md
+# Preview (Web)
+
+## Objectiu
+
+Aplicar estils en temps real sense modificar el CSS original.
+
+## Funcionament
+
+1. Rep missatges.
+2. Actualitza `config`.
+3. Regenera `<style id="live-editor-styles">`.
+
+## Identificació d’elements
+
+```html
+<h1 data-editable="contacto.title">Contacte</h1>
+```
+
+## Aplicació d’estils
+
+```css
+[data-editable="contacto.title"] {
+  font-size: 32px;
+}
+```
+
+## Regles
+
+- No modificar el DOM estructural.
+- Evitar estils inline; preferir `<style>` dinàmic.
+- Sempre regenerar el CSS des de `config`.
+
+## Highlight
+
+Opcionalment, es poden ressaltar elements editables amb una classe temporal.
+
+```
+
+=====
+## docs/05-communication.md
+=====
+```md
+# Protocol de comunicació
+
+## Canal
+
+```txt
+style-editor:<sessionId>
+```
+
+## Format base
+
+```ts
+{
+  type: string;
+  sessionId: string;
+  source: "editor" | "preview";
+  timestamp: number;
+}
+```
+
+## Missatges
+
+### `ready`
+Handshake inicial.
+
+### `config:request`
+Sol·licitar configuració completa.
+
+### `config:replaceAll`
+Enviar configuració completa.
+
+### `style:update`
+Actualitzar propietats d’un target.
+
+### `style:remove`
+Eliminar propietats concretes.
+
+### `highlight`
+Ressaltar element.
+
+## Flux
+
+1. `ready` ↔ `ready`
+2. `config:request`
+3. `config:replaceAll`
+4. `style:update` durant l’edició
+
+## Regles
+
+- Ignorar missatges amb un `sessionId` diferent.
+- No assumir ordre perfecte de lliurament.
+- Sempre poder reconstruir l’estat complet via `config:replaceAll`.
+
+```
+
+=====
+## docs/05-preview.md
+=====
+```md
+# Mòdul de web / preview
+
+## Objectiu
+
+El mòdul de web és una capa lleugera que s'instal·la a la web a editar. No és un editor. És un executor i una font de context.
+
+## Responsabilitats
+
+- inicialitzar la comunicació
+- anunciar-se a l'editor
+- retornar informació del context real de la web
+- detectar els elements amb `data-editable`
+- aplicar una configuració d'estils
+- ressaltar elements quan l'editor ho demani
+
+## Restriccions
+
+La preview no ha de:
+
+- crear projectes
+- decidir compatibilitats de negoci
+- guardar fitxers de projecte
+- interpretar opcions d'usuari
+
+## Identificació d'elements
+
+Els elements editables es marquen així:
+
+```html
+<h1 data-editable="contacto.title">Contacte</h1>
+<label data-editable="contacto.form.label">Nom</label>
+```
+
+## Aplicació d'estils
+
+Els estils rebuts es converteixen en CSS i s'injecten dins d'un únic element:
+
+```html
+<style id="live-editor-styles"></style>
+```
+
+## Reconnexió
+
+Si la preview es recarrega, ha de poder:
+
+1. reconnectar-se al canal
+2. tornar a anunciar-se
+3. tornar a sol·licitar la configuració si cal
+
+```
+
+=====
+## docs/06-communication.md
+=====
+```md
+# Protocol de comunicació
+
+## Transport actual
+
+La comunicació local es fa amb `BroadcastChannel`.
+
+Nom del canal:
+
+```txt
+style-editor:<sessionId>
+```
+
+## Camps base de tots els missatges
+
+```ts
+{
+  type: string;
+  sessionId: string;
+  source: "editor" | "preview";
+  timestamp: number;
+}
+```
+
+## Fases del protocol
+
+### Fase 1: descoberta i handshake
+
+- `hello`
+- `preview:info:request`
+- `preview:info:response`
+
+### Fase 2: inicialització
+
+- `project:load`
+- `config:replaceAll`
+- `config:request`
+
+### Fase 3: edició
+
+- `style:update`
+- `style:remove`
+- `highlight`
+
+## Missatges
+
+### `hello`
+
+Serveix per anunciar la presència d'una finestra connectada al canal.
+
+### `preview:info:request`
+
+L'editor demana a la web el seu context actual.
+
+### `preview:info:response`
+
+La web respon amb:
+
+- `protocolVersion`
+- `moduleVersion`
+- URL de la pàgina
+- `siteKey` i metadades bàsiques
+- llista de `targets` editables
+
+### `project:load`
+
+L'editor informa que ha creat o carregat un projecte.
+
+### `config:replaceAll`
+
+L'editor envia tota la configuració activa.
+
+### `config:request`
+
+La preview demana de nou la configuració completa, per exemple després d'una recàrrega.
+
+### `style:update`
+
+Actualitza parcialment un `target`.
+
+### `style:remove`
+
+Elimina una o més claus d'estil d'un `target`.
+
+### `highlight`
+
+Demana ressaltar un `target` o esborrar el highlight actual.
+
+## Regles del protocol
+
+- ignorar missatges d'una altra sessió
+- no assumir un ordre perfecte de lliurament
+- poder reconstruir sempre l'estat complet amb `config:replaceAll`
+- validar versions i compatibilitats abans d'aplicar una configuració importada
+
+```
+
+=====
+## docs/06-style-system.md
+=====
+```md
+# Sistema d'estils
+
+## Filosofia
+
+No hi ha CSS lliure. El sistema és controlat i segur.
+
+## Claus (`targets`)
+
+Format recomanat:
+
+```txt
+vista.component.rol
+```
+
+Exemples:
+
+- `contacto.title`
+- `contacto.form.label`
+- `home.hero.buttonPrimary`
+
+## Propietats permeses
+
+- `fontFamily`
+- `fontSize`
+- `fontWeight`
+- `lineHeight`
+- `letterSpacing`
+- `color`
+- `backgroundColor`
+- `marginTop`
+- `marginBottom`
+- `marginLeft`
+- `marginRight`
+- `paddingTop`
+- `paddingBottom`
+- `paddingLeft`
+- `paddingRight`
+- `borderColor`
+- `borderWidth`
+- `borderRadius`
+
+## Propietats prohibides
+
+- `display`
+- `position`
+- `flex`
+- `grid`
+- `width`
+- `height`
+- `transform`
+
+```
+
+=====
+## docs/07-data-format.md
+=====
+```md
+# Format de dades
+
+## Fitxer exportable
+
+L'editor ha de poder exportar un fitxer JSON que permeti continuar l'edició més endavant, encara que la web real encara no s'hagi actualitzat.
+
+## Estructura recomanada
+
+```json
+{
+  "schemaVersion": 1,
+  "project": {
+    "projectId": "client-a-main-site",
+    "name": "Client A - Web principal",
+    "baseUrl": "https://staging.client-a.com",
+    "siteKey": "client-a-main-site",
+    "createdAt": "2026-04-17T09:00:00.000Z",
+    "updatedAt": "2026-04-17T10:15:00.000Z"
+  },
+  "sourcePreview": {
+    "protocolVersion": 1,
+    "moduleVersion": "0.1.0",
+    "url": "https://staging.client-a.com/contacte",
+    "title": "Contacte",
+    "knownTargets": [
+      "contacto.title",
+      "contacto.form.label"
+    ]
+  },
+  "config": {
+    "contacto.title": {
+      "fontSize": "32px",
+      "color": "#222222"
+    }
+  }
+}
+```
+
+## Blocs del fitxer
+
+### `schemaVersion`
+
+Versió de l'esquema del fitxer exportable.
+
+### `project`
+
+Identitat estable del projecte.
+
+### `sourcePreview`
+
+Snapshot informatiu de la web amb què es va treballar.
+
+### `config`
+
+Configuració real d'estils, que és la part editable i aplicable.
+
+## Regles
+
+- el fitxer l'exporta l'editor
+- el fitxer l'importa l'editor
+- la web no ha de generar aquest fitxer
+- la importació ha de validar l'esquema abans de continuar
+- l'editor ha de permetre continuar sense connexió si només es vol revisar o preparar configuració
+
+```
+
+=====
+## docs/08-style-system.md
+=====
+```md
+# Sistema d'estils
+
+## Filosofia
+
+No hi ha CSS lliure. El sistema treballa amb un subconjunt de propietats visuals segures.
+
+## Targets
+
+Format recomanat:
+
+```txt
+vista.component.rol
+```
+
+Exemples:
+
+- `contacto.title`
+- `contacto.form.label`
+- `home.hero.buttonPrimary`
+
+## Propietats permeses
+
+- `fontFamily`
+- `fontSize`
+- `fontWeight`
+- `lineHeight`
+- `letterSpacing`
+- `color`
+- `backgroundColor`
+- `marginTop`
+- `marginBottom`
+- `marginLeft`
+- `marginRight`
+- `paddingTop`
+- `paddingBottom`
+- `paddingLeft`
+- `paddingRight`
+- `borderColor`
+- `borderWidth`
+- `borderRadius`
+
+## Propietats prohibides
+
+- `display`
+- `position`
+- `flex`
+- `grid`
+- `width`
+- `height`
+- `transform`
+
+## Recomanacions de modelatge
+
+- preferir rols semàntics abans que tags HTML
+- evitar targets massa específics del DOM
+- reutilitzar un mateix target si diversos nodes han de compartir estil
+
+```
+
+=====
+## docs/08-transport.md
+=====
+```md
+# Transport
+
+## Actual: BroadcastChannel
+
+```js
+new BroadcastChannel("style-editor:<sessionId>")
+```
+
+## Avantatges
+
+- Simple
+- Desacoblat
+- No calen referències directes entre finestres
+
+## Limitacions
+
+- Mateix origen
+- No remot
+- És broadcast; cal `sessionId`
+
+## Futur
+
+### WebSocket
+
+- suport remot
+- multiusuari
+- persistència central
+
+## Interfície comuna
+
+```ts
+interface Transport {
+  send(message: ProtocolMessage): void;
+  subscribe(handler: (message: ProtocolMessage) => void): () => void;
+  close(): void;
+}
+```
+
+```
+
+=====
+## docs/09-future-improvements.md
+=====
+```md
+# Futures millores
+
+## Curt termini
+
+- highlight d’elements
+- selecció des de preview
+- validació forta
+- feedback de connexió
+
+## Mig termini
+
+- presets
+- undo / redo
+- exportació CSS
+- importació JSON
+- classificació per grups o vistes
+
+## Llarg termini
+
+- editor remot
+- col·laboració en temps real
+- multiusuari
+- historial de versions
+
+## Possibles millores tècniques
+
+- CSS variables
+- cache de render
+- optimització del CSS generat
+
+```
+
+=====
+## docs/09-transport.md
+=====
+```md
+# Transport
+
+## Solució actual
+
+S'utilitza `BroadcastChannel` perquè editor i preview conviuen en el mateix navegador o entorn local.
+
+```js
+new BroadcastChannel(`style-editor:${sessionId}`)
+```
+
+## Avantatges
+
+- no cal referència directa entre finestres
+- les finestres es poden obrir en qualsevol ordre
+- reconnectar-se és senzill
+- la lògica queda desacoblada del punt d'entrada
+
+## Limitacions
+
+- mateix origen
+- no serveix per a editor remot
+- és difusió dins del canal; per això cal `sessionId`
+
+## Abstracció recomanada
+
+El transport ha d'estar darrere d'una interfície comuna.
+
+```ts
+interface Transport {
+  send(message: ProtocolMessage): void;
+  subscribe(handler: (message: ProtocolMessage) => void): () => void;
+  close(): void;
+}
+```
+
+## Futur
+
+Si algun dia l'editor passa a ser remot, el protocol hauria de mantenir-se i només s'hauria de substituir el transport per `WebSocket` o similar.
+
+```
+
+=====
+## docs/10-editor-state.md
+=====
+```md
+# Estat de l'editor
+
+## Separació recomanada
+
+L'estat s'ha de separar entre:
+
+- estat de domini
+- estat de UI
+
+## Estat de domini
+
+Inclou la informació persistent o de negoci.
+
+Exemples:
+
+- projecte actual
+- configuració d'estils
+- informació de la preview
+- estat de connexió
+- compatibilitat detectada
+
+## Estat de UI
+
+Inclou informació temporal de presentació.
+
+Exemples:
+
+- target seleccionat
+- panell actiu
+- modal oberta
+- errors temporals
+- loading
+
+## Regles
+
+- la configuració és la font de veritat dels estils
+- qualsevol canvi de propietat actualitza la configuració
+- cada canvi pot derivar en un missatge `style:update`
+- l'exportació sempre es construeix a partir del projecte i la configuració actuals
+
+```
+
+=====
+## docs/11-react-components.md
+=====
+```md
+# Components React
+
+## Objectiu
+
+Definir una UI neta, on els components no coneguin la lògica profunda del sistema.
+
+## Estructura suggerida
+
+```txt
+App
+ ├── Header
+ ├── StartScreen
+ ├── ConnectionStatus
+ ├── TargetSelector
+ ├── StylePanel
+ │    ├── TypographyEditor
+ │    ├── SpacingEditor
+ │    ├── BorderEditor
+ │    └── ColorEditor
+ └── Footer
+```
+
+## Regles per als components
+
+Els components han de:
+
+- mostrar dades preparades
+- emetre esdeveniments d'usuari
+- cridar accions del controlador
+
+Els components no han de:
+
+- construir missatges del protocol
+- parsejar fitxers JSON exportables
+- gestionar directament `BroadcastChannel`
+- decidir compatibilitats
+
+## Pantalles mínimes
+
+### `StartScreen`
+
+Permet les dues decisions inicials:
+
+- nou projecte o projecte existent
+- des de l'editor o des de la web, segons context disponible
+
+### `EditorPage`
+
+Pantalla principal d'edició.
+
+### `ConnectionStatus`
+
+Mostra l'estat del handshake i de la connexió amb la preview.
+
+```
+
+=====
+## docs/12-style-application.md
+=====
+```md
+# Aplicació d'estils a la preview
+
+## Principi
+
+La preview transforma el `config` en CSS i l'injecta dins d'un únic `<style>`.
+
+## Conversió
+
+- `camelCase` -> `kebab-case`
+- cada `target` es converteix en un selector `[data-editable="..."]`
+
+## Exemple
+
+Entrada:
+
+```json
+{
+  "contacto.title": {
+    "fontSize": "32px",
+    "color": "#222222"
+  }
+}
+```
+
+Sortida:
+
+```css
+[data-editable="contacto.title"] {
+  font-size: 32px;
+  color: #222222;
+}
+```
+
+## Regles
+
+- no duplicar l'element `<style>`
+- regenerar el CSS complet a partir de l'estat actual
+- evitar `inline styles`
+- el `config` intern de la preview només existeix per reconstruir aquest CSS
+
+```
+
+=====
+## docs/13-highlight-system.md
+=====
+```md
+# Sistema de highlight
+
+## Objectiu
+
+Permetre identificar visualment l'element o grup d'elements que s'està editant.
+
+## Missatge
+
+```ts
+{
+  type: "highlight";
+  target: string | null;
+}
+```
+
+## Comportament recomanat
+
+1. eliminar highlights existents
+2. buscar tots els nodes amb el `target` indicat
+3. aplicar una classe temporal de highlight
+4. si `target` és `null`, netejar el highlight
+
+## CSS base suggerit
+
+```css
+.editable-highlight {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+```
+
+```
+
+=====
+## docs/14-session-management.md
+=====
+```md
+# Gestió de sessions
+
+## Objectiu
+
+Evitar interferències entre múltiples finestres i separar la sessió temporal del projecte persistent.
+
+## `sessionId`
+
+Cada connexió editor-preview es basa en un `sessionId`, normalment generat amb:
+
+```js
+crypto.randomUUID()
+```
+
+## Passat via URL
+
+```txt
+/editor?session=<sessionId>
+/preview?session=<sessionId>
+```
+
+## Canal
+
+```txt
+style-editor:<sessionId>
+```
+
+## Diferència entre sessió i projecte
+
+### Sessió
+
+És temporal i només serveix per a la comunicació activa.
+
+### Projecte
+
+És persistent i s'exporta o importa en el JSON.
+
+## Reconnexió
+
+Si una finestra es recarrega:
+
+1. torna a connectar-se al canal
+2. envia `hello`
+3. demana o envia la configuració completa segons el seu rol
+
+```
+
+=====
+## docs/15-editor-frontend-structure.md
+=====
+```md
+# Estructura del frontend de l'editor
+
+## Objectiu
+
+Tenir un frontend net i intercanviable, amb una separació clara entre presentació, lògica de negoci i infraestructura.
+
+## Estructura recomanada
+
+```txt
+/editor
+  /app
+    /use-cases
+      create-project.ts
+      load-project-file.ts
+      connect-to-preview.ts
+      handle-preview-info.ts
+      update-style.ts
+      remove-style.ts
+      export-project.ts
+      import-project.ts
+      highlight-target.ts
+
+  /domain
+    /models
+      project.ts
+      project-file.ts
+      preview-info.ts
+      style-config.ts
+      editable-style-set.ts
+    /validation
+      style-schema.ts
+      project-validation.ts
+      compatibility.ts
+
+  /infrastructure
+    /transport
+      broadcast-channel-transport.ts
+      transport-types.ts
+    /storage
+      project-file-storage.ts
+    /runtime
+      session.ts
+      url.ts
+
+  /adapters
+    preview-client.ts
+    project-repository.ts
+
+  /presentation
+    /components
+      Header.tsx
+      StartScreen.tsx
+      ConnectionStatus.tsx
+      TargetSelector.tsx
+      StylePanel.tsx
+      TypographyEditor.tsx
+      SpacingEditor.tsx
+      BorderEditor.tsx
+      ColorEditor.tsx
+    /pages
+      EditorPage.tsx
+    /hooks
+      useEditorController.ts
+      useConnection.ts
+      useProject.ts
+```
+
+## Responsabilitats
+
+### `presentation`
+
+React pur.
+
+### `app`
+
+Casos d'ús i coordinació.
+
+### `domain`
+
+Models i regles del negoci.
+
+### `infrastructure`
+
+Transport, fitxers i runtime.
+
+### `adapters`
+
+Ponts entre capes i APIs concretes.
+
+## Regla principal
+
+Els components React no han de saber res del protocol més enllà del necessari per mostrar dades i disparar accions.
+
+```
+
+=====
+## docs/16-preview-module-structure.md
+=====
+```md
+# Estructura del mòdul de la web
+
+## Objectiu
+
+Mantenir el mòdul instal·lat a la web petit, robust i amb responsabilitats molt clares.
+
+## Estructura recomanada
+
+```txt
+/preview-module
+  /core
+    preview-engine.ts
+    style-engine.ts
+    highlight-engine.ts
+
+  /communication
+    broadcast-channel.ts
+    message-handler.ts
+
+  /runtime
+    session.ts
+    init.ts
+
+  /dom
+    target-scanner.ts
+    dom-utils.ts
+```
+
+## Responsabilitats
+
+### `preview-engine.ts`
+
+Coordina l'estat intern mínim i decideix què fer quan arriben missatges.
+
+### `style-engine.ts`
+
+Converteix configuració en CSS i actualitza `<style id="live-editor-styles">`.
+
+### `highlight-engine.ts`
+
+Aplica o neteja highlights.
+
+### `message-handler.ts`
+
+Interpreta missatges i els envia a la peça adequada.
+
+### `target-scanner.ts`
+
+Llegeix tots els `data-editable` disponibles al DOM.
+
+## Regla principal
+
+La web no té lògica de negoci de projecte. Només exposa context i executa.
+
+```
+
+=====
+## docs/17-compatibility-and-validation.md
+=====
+```md
+# Compatibilitat i validació
+
+## Objectiu
+
+Evitar aplicar configuracions errònies a una web equivocada o incompatible.
+
+## Nivells de validació
+
+### Nivell 1: comunicació mínima
+
+Obligatori.
+
+- hi ha `sessionId`
+- la web respon al handshake
+- `protocolVersion` és compatible
+
+### Nivell 2: compatibilitat de projecte
+
+Important.
+
+- coincideix `siteKey`
+- la `baseUrl` és coherent
+- el fitxer JSON és vàlid
+
+### Nivell 3: compatibilitat de contingut
+
+Informatiu o warning.
+
+- hi ha `targets` al JSON que no existeixen a la web actual
+- la web té `targets` nous que no consten al fitxer
+- el recompte de `targets` ha canviat
+
+## Comportament recomanat
+
+- errors crítics: bloquejar o advertir fortament
+- incompatibilitats de contingut: permetre continuar amb avís
+- permetre obrir un projecte existent sense connexió si l'usuari només vol revisar o preparar canvis
+
+```
+
+=====
+## editor/index.html
+=====
+```html
+<!doctype html>
+<html lang="ca">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CSS Visual Editor</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+
+```
+
+=====
+## editor/package.json
+=====
+```json
+{
+  "name": "css-visual-editor-editor",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.1",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.10"
+  }
+}
+
+```
+
+=====
+## editor/src/App.tsx
+=====
+```tsx
+import { useEffect, useMemo, useState } from 'react';
+import { BroadcastChannelTransport } from '../../transport/broadcast-channel';
+import { createBaseMessage, type ProtocolMessage } from '../../shared/messages';
+import { sanitizeStyleSet, type EditableStyleSet, type StyleConfig } from '../../shared/style-schema';
+import { ConnectionStatus } from './components/ConnectionStatus';
+import { TargetSelector } from './components/TargetSelector';
+import { StylePanel } from './components/StylePanel';
+
+const DEFAULT_TARGETS = [
+  'contacto.title',
+  'contacto.form.label',
+  'contacto.form.input',
+  'contacto.form.buttonPrimary',
+];
+
+function getSessionId(): string {
+  const params = new URLSearchParams(window.location.search);
+  const existing = params.get('session');
+
+  if (existing) return existing;
+
+  const sessionId = crypto.randomUUID();
+  params.set('session', sessionId);
+  history.replaceState(null, '', `${window.location.pathname}?${params.toString()}`);
+  return sessionId;
+}
+
+export function App() {
+  const [sessionId] = useState<string>(() => getSessionId());
+  const [config, setConfig] = useState<StyleConfig>({});
+  const [selectedTarget, setSelectedTarget] = useState<string | null>(DEFAULT_TARGETS[0]);
+  const [isPreviewConnected, setIsPreviewConnected] = useState(false);
+
+  const transport = useMemo(() => new BroadcastChannelTransport(sessionId), [sessionId]);
+
+  useEffect(() => {
+    const unsubscribe = transport.subscribe((message: ProtocolMessage) => {
+      if (message.sessionId !== sessionId || message.source === 'editor') return;
+
+      if (message.type === 'ready') {
+        setIsPreviewConnected(true);
+        transport.send({
+          ...createBaseMessage('config:replaceAll', sessionId, 'editor'),
+          type: 'config:replaceAll',
+          config,
+        });
+      }
+
+      if (message.type === 'config:request') {
+        transport.send({
+          ...createBaseMessage('config:replaceAll', sessionId, 'editor'),
+          type: 'config:replaceAll',
+          config,
+        });
+      }
+    });
+
+    transport.send({
+      ...createBaseMessage('ready', sessionId, 'editor'),
+      type: 'ready',
+    });
+
+    return () => {
+      unsubscribe();
+      transport.close();
+    };
+  }, [config, sessionId, transport]);
+
+  function updateStyles(target: string, styles: EditableStyleSet) {
+    const sanitized = sanitizeStyleSet(styles as Record<string, string>);
+
+    setConfig((prev) => ({
+      ...prev,
+      [target]: {
+        ...prev[target],
+        ...sanitized,
+      },
+    }));
+
+    transport.send({
+      ...createBaseMessage('style:update', sessionId, 'editor'),
+      type: 'style:update',
+      target,
+      styles: sanitized,
+    });
+  }
+
+  function openPreview() {
+    window.open(`../preview/index.html?session=${sessionId}`, 'preview-window');
+  }
+
+  useEffect(() => {
+    if (!selectedTarget) return;
+
+    transport.send({
+      ...createBaseMessage('highlight', sessionId, 'editor'),
+      type: 'highlight',
+      target: selectedTarget,
+    });
+  }, [selectedTarget, sessionId, transport]);
+
+  return (
+    <div className="app-shell">
+      <header className="app-header">
+        <div>
+          <h1>CSS Visual Editor</h1>
+          <p>Sessió: {sessionId}</p>
+        </div>
+        <div className="app-actions">
+          <ConnectionStatus connected={isPreviewConnected} />
+          <button onClick={openPreview}>Obrir preview</button>
+        </div>
+      </header>
+
+      <main className="app-main">
+        <aside className="sidebar">
+          <TargetSelector
+            targets={DEFAULT_TARGETS}
+            selected={selectedTarget}
+            onSelect={setSelectedTarget}
+          />
+        </aside>
+
+        <section className="content">
+          <StylePanel
+            target={selectedTarget}
+            values={selectedTarget ? config[selectedTarget] ?? {} : {}}
+            onChange={(styles) => {
+              if (!selectedTarget) return;
+              updateStyles(selectedTarget, styles);
+            }}
+          />
+
+          <section className="json-panel">
+            <h2>Config JSON</h2>
+            <pre>{JSON.stringify(config, null, 2)}</pre>
+          </section>
+        </section>
+      </main>
+    </div>
+  );
+}
+
+```
+
+=====
+## editor/src/components/ConnectionStatus.tsx
+=====
+```tsx
+type Props = {
+  connected: boolean;
+};
+
+export function ConnectionStatus({ connected }: Props) {
+  return <span>{connected ? 'Preview connectada' : 'Sense connexió'}</span>;
+}
+
+```
+
+=====
+## editor/src/components/StylePanel.tsx
+=====
+```tsx
+import type { EditableStyleSet } from '../../../shared/style-schema';
+
+type Props = {
+  target: string | null;
+  values: EditableStyleSet;
+  onChange: (styles: EditableStyleSet) => void;
+};
+
+function inputValue(values: EditableStyleSet, key: keyof EditableStyleSet): string {
+  return values[key] ?? '';
+}
+
+export function StylePanel({ target, values, onChange }: Props) {
+  if (!target) {
+    return <div>Selecciona un element editable.</div>;
+  }
+
+  return (
+    <div>
+      <h2>Edició: {target}</h2>
+
+      <div className="grid-form">
+        <label>
+          Font size
+          <input
+            value={inputValue(values, 'fontSize')}
+            onChange={(e) => onChange({ fontSize: e.target.value })}
+            placeholder="32px"
+          />
+        </label>
+
+        <label>
+          Font weight
+          <input
+            value={inputValue(values, 'fontWeight')}
+            onChange={(e) => onChange({ fontWeight: e.target.value })}
+            placeholder="700"
+          />
+        </label>
+
+        <label>
+          Text color
+          <input
+            value={inputValue(values, 'color')}
+            onChange={(e) => onChange({ color: e.target.value })}
+            placeholder="#222222"
+          />
+        </label>
+
+        <label>
+          Background color
+          <input
+            value={inputValue(values, 'backgroundColor')}
+            onChange={(e) => onChange({ backgroundColor: e.target.value })}
+            placeholder="#ffffff"
+          />
+        </label>
+
+        <label>
+          Margin bottom
+          <input
+            value={inputValue(values, 'marginBottom')}
+            onChange={(e) => onChange({ marginBottom: e.target.value })}
+            placeholder="16px"
+          />
+        </label>
+
+        <label>
+          Padding top
+          <input
+            value={inputValue(values, 'paddingTop')}
+            onChange={(e) => onChange({ paddingTop: e.target.value })}
+            placeholder="12px"
+          />
+        </label>
+
+        <label>
+          Border width
+          <input
+            value={inputValue(values, 'borderWidth')}
+            onChange={(e) => onChange({ borderWidth: e.target.value })}
+            placeholder="1px"
+          />
+        </label>
+
+        <label>
+          Border color
+          <input
+            value={inputValue(values, 'borderColor')}
+            onChange={(e) => onChange({ borderColor: e.target.value })}
+            placeholder="#cccccc"
+          />
+        </label>
+
+        <label>
+          Border radius
+          <input
+            value={inputValue(values, 'borderRadius')}
+            onChange={(e) => onChange({ borderRadius: e.target.value })}
+            placeholder="8px"
+          />
+        </label>
+      </div>
+    </div>
+  );
+}
+
+```
+
+=====
+## editor/src/components/TargetSelector.tsx
+=====
+```tsx
+type Props = {
+  targets: string[];
+  selected: string | null;
+  onSelect: (target: string) => void;
+};
+
+export function TargetSelector({ targets, selected, onSelect }: Props) {
+  return (
+    <div>
+      <h2>Elements editables</h2>
+      <ul>
+        {targets.map((target) => (
+          <li key={target}>
+            <button
+              type="button"
+              onClick={() => onSelect(target)}
+              style={{ fontWeight: selected === target ? 'bold' : 'normal' }}
+            >
+              {target}
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+```
+
+=====
+## editor/src/main.tsx
+=====
+```tsx
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import { App } from './App';
+import './styles.css';
+
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>,
+);
+
+```
+
+=====
+## editor/src/styles.css
+=====
+```css
+:root {
+  font-family: Arial, sans-serif;
+}
+
+body {
+  margin: 0;
+  background: #f6f7f9;
+  color: #1f2937;
+}
+
+.app-shell {
+  min-height: 100vh;
+}
+
+.app-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  background: white;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.app-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.app-main {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 20px;
+  padding: 20px;
+}
+
+.sidebar,
+.content,
+.json-panel {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.content {
+  display: grid;
+  gap: 20px;
+}
+
+.grid-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+label {
+  display: grid;
+  gap: 6px;
+}
+
+input,
+button {
+  font: inherit;
+  padding: 8px 10px;
+}
+
+ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 8px;
+}
+
+pre {
+  overflow: auto;
+  background: #111827;
+  color: #f9fafb;
+  padding: 12px;
+  border-radius: 8px;
+}
+
+```
+
+=====
+## editor/tsconfig.json
+=====
+```json
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "useDefineForClassFields": true,
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "allowJs": false,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "module": "ESNext",
+    "moduleResolution": "Node",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx"
+  },
+  "include": ["src"]
+}
+
+```
+
+=====
+## editor/vite.config.ts
+=====
+```ts
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+
+export default defineConfig({
+  plugins: [react()],
+});
+
+```
+
+=====
+## preview/index.html
+=====
+```html
+<!doctype html>
+<html lang="ca">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Preview</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        background: #ffffff;
+        color: #222222;
+      }
+      .page {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 40px 24px;
+      }
+      .hero-title {
+        font-size: 42px;
+        margin-bottom: 12px;
+      }
+      .form-label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 600;
+      }
+      .form-input {
+        width: 100%;
+        border: 1px solid #d1d5db;
+        padding: 10px 12px;
+        border-radius: 6px;
+        margin-bottom: 16px;
+      }
+      .button-primary {
+        border: 1px solid #111827;
+        background: #111827;
+        color: white;
+        padding: 10px 16px;
+        border-radius: 8px;
+      }
+      .editable-highlight {
+        outline: 2px solid #3b82f6;
+        outline-offset: 2px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <h1 class="hero-title" data-editable="contacto.title">Contacte</h1>
+      <p>Preview simple per provar l'editor desacoblat.</p>
+
+      <label class="form-label" data-editable="contacto.form.label">Nom</label>
+      <input class="form-input" data-editable="contacto.form.input" placeholder="Escriu el teu nom" />
+
+      <button class="button-primary" data-editable="contacto.form.buttonPrimary">Enviar</button>
+
+      <p style="margin-top: 32px;">
+        <button id="open-editor">Obrir editor</button>
+      </p>
+    </div>
+
+    <script type="module" src="./preview.ts"></script>
+  </body>
+</html>
+
+```
+
+=====
+## preview/preview.ts
+=====
+```ts
+import { renderStyles, upsertLiveStyleTag } from '../shared/css';
+import { createBaseMessage, type ProtocolMessage } from '../shared/messages';
+import type { StyleConfig } from '../shared/style-schema';
+import { BroadcastChannelTransport } from '../transport/broadcast-channel';
+
+function getSessionId(): string {
+  const params = new URLSearchParams(window.location.search);
+  const existing = params.get('session');
+
+  if (existing) return existing;
+
+  const sessionId = crypto.randomUUID();
+  params.set('session', sessionId);
+  history.replaceState(null, '', `${window.location.pathname}?${params.toString()}`);
+  return sessionId;
+}
+
+const sessionId = getSessionId();
+const transport = new BroadcastChannelTransport(sessionId);
+let config: StyleConfig = {};
+
+function applyHighlight(target: string | null): void {
+  document
+    .querySelectorAll('[data-editable]')
+    .forEach((el) => el.classList.remove('editable-highlight'));
+
+  if (!target) return;
+
+  document
+    .querySelectorAll(`[data-editable="${target}"]`)
+    .forEach((el) => el.classList.add('editable-highlight'));
+}
+
+function rerender(): void {
+  const css = renderStyles(config);
+  upsertLiveStyleTag(css);
+}
+
+transport.subscribe((message: ProtocolMessage) => {
+  if (message.sessionId !== sessionId || message.source === 'preview') return;
+
+  if (message.type === 'config:replaceAll') {
+    config = message.config;
+    rerender();
+  }
+
+  if (message.type === 'style:update') {
+    config = {
+      ...config,
+      [message.target]: {
+        ...config[message.target],
+        ...message.styles,
+      },
+    };
+    rerender();
+  }
+
+  if (message.type === 'style:remove') {
+    const current = { ...(config[message.target] ?? {}) };
+    for (const key of message.keys) {
+      delete current[key];
+    }
+    config = {
+      ...config,
+      [message.target]: current,
+    };
+    rerender();
+  }
+
+  if (message.type === 'highlight') {
+    applyHighlight(message.target);
+  }
+});
+
+transport.send({
+  ...createBaseMessage('ready', sessionId, 'preview'),
+  type: 'ready',
+});
+
+transport.send({
+  ...createBaseMessage('config:request', sessionId, 'preview'),
+  type: 'config:request',
+});
+
+const button = document.getElementById('open-editor');
+button?.addEventListener('click', () => {
+  window.open(`../editor/index.html?session=${sessionId}`, 'editor-window');
+});
+
+```
+
+=====
+## shared/css.ts
+=====
+```ts
+import type { StyleConfig } from './style-schema';
+
+export function camelToKebab(value: string): string {
+  return value.replace(/[A-Z]/g, (match) => `-${match.toLowerCase()}`);
+}
+
+export function renderStyles(config: StyleConfig): string {
+  let css = '';
+
+  for (const [target, styles] of Object.entries(config)) {
+    const declarations = Object.entries(styles)
+      .filter(([, value]) => typeof value === 'string' && value.length > 0)
+      .map(([key, value]) => `  ${camelToKebab(key)}: ${value};`)
+      .join('\n');
+
+    if (!declarations) continue;
+
+    css += `[data-editable="${target}"] {\n${declarations}\n}\n\n`;
+  }
+
+  return css;
+}
+
+export function upsertLiveStyleTag(css: string, id = 'live-editor-styles'): void {
+  let styleEl = document.getElementById(id) as HTMLStyleElement | null;
+
+  if (!styleEl) {
+    styleEl = document.createElement('style');
+    styleEl.id = id;
+    document.head.appendChild(styleEl);
+  }
+
+  styleEl.textContent = css;
+}
+
+```
+
+=====
+## shared/messages.ts
+=====
+```ts
+import type { EditableStyleSet, StyleConfig, AllowedStyleKey } from './style-schema';
+
+export type MessageSource = 'editor' | 'preview';
+
+export type BaseMessage = {
+  type: string;
+  sessionId: string;
+  source: MessageSource;
+  timestamp: number;
+};
+
+export type ReadyMessage = BaseMessage & {
+  type: 'ready';
+};
+
+export type ConfigRequestMessage = BaseMessage & {
+  type: 'config:request';
+};
+
+export type ConfigReplaceAllMessage = BaseMessage & {
+  type: 'config:replaceAll';
+  config: StyleConfig;
+};
+
+export type StyleUpdateMessage = BaseMessage & {
+  type: 'style:update';
+  target: string;
+  styles: EditableStyleSet;
+};
+
+export type StyleRemoveMessage = BaseMessage & {
+  type: 'style:remove';
+  target: string;
+  keys: AllowedStyleKey[];
+};
+
+export type HighlightMessage = BaseMessage & {
+  type: 'highlight';
+  target: string | null;
+};
+
+export type ProtocolMessage =
+  | ReadyMessage
+  | ConfigRequestMessage
+  | ConfigReplaceAllMessage
+  | StyleUpdateMessage
+  | StyleRemoveMessage
+  | HighlightMessage;
+
+export function createBaseMessage(type: ProtocolMessage['type'], sessionId: string, source: MessageSource): BaseMessage {
+  return {
+    type,
+    sessionId,
+    source,
+    timestamp: Date.now(),
+  };
+}
+
+```
+
+=====
+## shared/style-schema.ts
+=====
+```ts
+export const ALLOWED_STYLE_KEYS = [
+  'fontFamily',
+  'fontSize',
+  'fontWeight',
+  'lineHeight',
+  'letterSpacing',
+  'color',
+  'backgroundColor',
+  'marginTop',
+  'marginBottom',
+  'marginLeft',
+  'marginRight',
+  'paddingTop',
+  'paddingBottom',
+  'paddingLeft',
+  'paddingRight',
+  'borderColor',
+  'borderWidth',
+  'borderRadius',
+] as const;
+
+export type AllowedStyleKey = (typeof ALLOWED_STYLE_KEYS)[number];
+
+export type EditableStyleSet = Partial<Record<AllowedStyleKey, string>>;
+export type StyleConfig = Record<string, EditableStyleSet>;
+
+export function sanitizeStyleSet(input: Record<string, string>): EditableStyleSet {
+  const output: EditableStyleSet = {};
+
+  for (const key of ALLOWED_STYLE_KEYS) {
+    if (typeof input[key] === 'string') {
+      output[key] = input[key];
+    }
+  }
+
+  return output;
+}
+
+```
+
+=====
+## transport/broadcast-channel.ts
+=====
+```ts
+import type { ProtocolMessage } from '../shared/messages';
+
+export interface Transport {
+  send(message: ProtocolMessage): void;
+  subscribe(handler: (message: ProtocolMessage) => void): () => void;
+  close(): void;
+}
+
+export class BroadcastChannelTransport implements Transport {
+  private readonly channel: BroadcastChannel;
+
+  constructor(sessionId: string) {
+    this.channel = new BroadcastChannel(`style-editor:${sessionId}`);
+  }
+
+  send(message: ProtocolMessage): void {
+    this.channel.postMessage(message);
+  }
+
+  subscribe(handler: (message: ProtocolMessage) => void): () => void {
+    const listener = (event: MessageEvent<ProtocolMessage>) => handler(event.data);
+    this.channel.addEventListener('message', listener);
+
+    return () => {
+      this.channel.removeEventListener('message', listener);
+    };
+  }
+
+  close(): void {
+    this.channel.close();
+  }
+}
+
+```
+

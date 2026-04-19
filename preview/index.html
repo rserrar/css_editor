@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="ca">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Preview</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        background: #ffffff;
+        color: #222222;
+      }
+      .page {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 40px 24px;
+      }
+      .hero-title {
+        font-size: 42px;
+        margin-bottom: 12px;
+      }
+      .form-label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 600;
+      }
+      .form-input {
+        width: 100%;
+        border: 1px solid #d1d5db;
+        padding: 10px 12px;
+        border-radius: 6px;
+        margin-bottom: 16px;
+      }
+      .button-primary {
+        border: 1px solid #111827;
+        background: #111827;
+        color: white;
+        padding: 10px 16px;
+        border-radius: 8px;
+      }
+      .editable-highlight {
+        outline: 2px solid #3b82f6;
+        outline-offset: 2px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <h1 class="hero-title" data-editable="contacto.title">Contacte</h1>
+      <p>Preview simple per provar l'editor desacoblat.</p>
+
+      <label class="form-label" data-editable="contacto.form.label">Nom</label>
+      <input class="form-input" data-editable="contacto.form.input" placeholder="Escriu el teu nom" />
+
+      <button class="button-primary" data-editable="contacto.form.buttonPrimary">Enviar</button>
+
+      <p style="margin-top: 32px;">
+        <button id="open-editor">Obrir editor</button>
+      </p>
+    </div>
+
+    <script type="module" src="./preview.ts"></script>
+  </body>
+</html>

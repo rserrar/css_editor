@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exemple Web Real (Preview)</title>
+    <style>
+        body { font-family: system-ui, sans-serif; padding: 2rem; line-height: 1.5; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; border: 1px solid #eee; padding: 2rem; border-radius: 1rem; }
+        h1 { margin-top: 0; }
+        .card { background: #f9fafb; padding: 1.5rem; border-radius: 0.5rem; margin-bottom: 2rem; }
+        label { display: block; margin-bottom: 0.5rem; font-weight: bold; }
+        input { width: 100%; padding: 0.5rem; border: 1px solid #ccc; border-radius: 0.25rem; }
+        button { background: #000; color: #fff; border: none; padding: 0.75rem 1rem; border-radius: 0.5rem; cursor: pointer; font-weight: bold; }
+        .help { color: #666; font-size: 0.875rem; margin-top: 2rem; border-top: 1px solid #eee; padding-top: 1rem; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <section>
+            <h1 data-editable="home.title">Benvinguts a la Preview</h1>
+        </section>
+
+        <nav class="card" data-editable-scope="layout.mainMenu">
+            <h2 data-editable="menu.title">Menu principal</h2>
+            <div style="display:flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 1rem;">
+                <a href="#" data-editable="menu.option">Inici</a>
+                <a href="#" data-editable="menu.option" data-editable-master="true">Productes</a>
+                <a href="#" data-editable="menu.option">Preus</a>
+            </div>
+            <div style="margin-top: 1rem; padding-left: 1rem; border-left: 2px solid #e5e7eb;">
+                <a href="#" data-editable="menu.subOption">Hosting</a>
+            </div>
+        </nav>
+
+        <footer class="card" data-editable-scope="layout.footerMenu">
+            <h2 data-editable="menu.title">Menu footer</h2>
+            <div style="display:flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 1rem;">
+                <a href="#" data-editable="menu.option" aria-current="page">Contacte</a>
+                <a href="#" data-editable="menu.option">Privacitat</a>
+            </div>
+        </footer>
+
+        <div class="card" data-editable-scope="tabs.main">
+            <h2 data-editable="tabs.title">Tabs principals</h2>
+            <div style="display:flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 1rem;">
+                <button data-editable="tab.option" aria-selected="true">Descripcio</button>
+                <button data-editable="tab.option">Opinions</button>
+            </div>
+        </div>
+
+        <div class="card" data-editable-scope="faq.list">
+            <h2 data-editable="accordion.title">Preguntes frequents</h2>
+            <div style="display:flex; flex-direction:column; gap: 0.75rem; margin-top: 1rem;">
+                <button data-editable="accordion.trigger" data-state="open">Que inclou?</button>
+                <button data-editable="accordion.trigger">Preus</button>
+            </div>
+        </div>
+
+        <div class="card" data-editable-scope="filters.panel">
+            <h2 data-editable="filter.title">Filtres</h2>
+            <div style="margin-top: 1rem;">
+                <button data-editable="filter.trigger" aria-expanded="true">Categoria</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2 data-editable="home.subtitle">Panell de subscripcio</h2>
+            <p>Aquest es un exemple d'una web que te elements editables.</p>
+
+            <div style="margin-bottom: 1rem;">
+                <label data-editable="form.label">El teu correu</label>
+                <input type="email" placeholder="correu@exemple.com">
+            </div>
+
+            <button data-editable="form.button">Subscriu-me ara</button>
+            <div style="margin-top: 1rem;">
+                <button data-editable="button.primary">Prova hover i focus</button>
+            </div>
+        </div>
+
+        <ul class="card" data-editable-scope="home.features" style="padding-left: 1.25rem;">
+            <li data-editable="card.title">Rapid</li>
+            <li data-editable="card.title">Segur</li>
+        </ul>
+
+        <div class="help">
+            <p><strong>Com provar-ho:</strong> Afegeix <code>?session=123</code> a la URL de la web i obre l'editor amb el mateix ID.</p>
+        </div>
+    </div>
+
+    <script src="/preview-module.js" data-site-key="example-marketing" data-site-name="Exemple Web Real"></script>
+</body>
+</html>

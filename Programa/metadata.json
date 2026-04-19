@@ -1,0 +1,6 @@
+{
+  "name": "Live CSS Visual Editor",
+  "description": "Editor visual d'estils CSS segur i desacoblat que es comunica amb la preview via BroadcastChannel.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}
