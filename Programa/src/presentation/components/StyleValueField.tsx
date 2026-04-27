@@ -4,11 +4,12 @@ import { AllowedStyleKey } from '../../domain/models';
 import { getStyleSchema } from '../../domain/styleSchema';
 import { buildStructuredStyleValue, isHexColor, normalizeColorValue, parseStructuredStyleValue, validateStyleValue } from '../../domain/styleValidators';
 import { useTranslation } from '../../infrastructure/i18n/I18nContext';
-import { RotateCcw } from 'lucide-react';
+import { Check, CircleDot, PencilLine, RotateCcw } from 'lucide-react';
 
 interface Props {
   property: AllowedStyleKey;
   value: string;
+  computedValue?: string;
   onChange: (value: string) => void;
   onRemove: () => void;
 }
@@ -17,7 +18,19 @@ function formatLabel(property: string): string {
   return property.replace(/([A-Z])/g, ' $1').trim();
 }
 
-export function StyleValueField({ property, value, onChange, onRemove }: Props) {
+function normalizeComparableValue(property: AllowedStyleKey, rawValue: string): string {
+  const normalized = rawValue.trim();
+  if (!normalized) return '';
+
+  const result = validateStyleValue(property, normalized);
+  if (result.isValid) {
+    return result.normalizedValue.trim().toLowerCase();
+  }
+
+  return normalized.toLowerCase();
+}
+
+export function StyleValueField({ property, value, computedValue, onChange, onRemove }: Props) {
   const { t } = useTranslation();
   const schema = getStyleSchema(property);
   const validation = useMemo(() => validateStyleValue(property, value), [property, value]);
@@ -41,6 +54,20 @@ export function StyleValueField({ property, value, onChange, onRemove }: Props) 
   }, [structuredValue.number, structuredValue.unit, schema.units]);
 
   const warningMessage = value && !validation.isValid ? t('editor.invalidPropertyValue') : null;
+  const contextualPlaceholder = computedValue || schema.defaultValue || formatLabel(property);
+  const comparisonState = useMemo(() => {
+    if (!computedValue) {
+      return null;
+    }
+
+    if (!isActive || !value) {
+      return 'base';
+    }
+
+    const currentComparable = normalizeComparableValue(property, value);
+    const baseComparable = normalizeComparableValue(property, computedValue);
+    return currentComparable === baseComparable ? 'matches' : 'overrides';
+  }, [computedValue, isActive, property, value]);
 
   const handleReset = () => {
     const nextValue = lastKnownValue || fallbackValue;
@@ -61,11 +88,11 @@ export function StyleValueField({ property, value, onChange, onRemove }: Props) 
     }
   };
 
-  const renderWarning = () => warningMessage ? <div className="text-[11px] text-amber-700">{warningMessage}</div> : null;
+  const renderWarning = () => warningMessage ? <div className="text-[12px] text-amber-700">{warningMessage}</div> : null;
 
   const renderControls = (input: JSX.Element) => (
-    <div className="space-y-1.5">
-      <div className="flex items-start gap-2">
+      <div className="space-y-1.5">
+        <div className="flex items-start gap-2">
         <input
           type="checkbox"
           aria-label={`${property}-enabled`}
@@ -84,6 +111,31 @@ export function StyleValueField({ property, value, onChange, onRemove }: Props) 
           <RotateCcw size={12} />
         </button>
       </div>
+      {computedValue ? (
+        <div className="flex items-center justify-between gap-2 text-[12px]">
+          <div className="text-text-muted font-mono">{t('editor.baseValue')}: {computedValue}</div>
+          {comparisonState ? (
+            <span
+              className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide ${
+                comparisonState === 'matches'
+                  ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                  : comparisonState === 'overrides'
+                    ? 'border-amber-200 bg-amber-50 text-amber-700'
+                    : 'border-slate-200 bg-slate-100 text-slate-600'
+              }`}
+            >
+              {comparisonState === 'matches' ? <Check size={10} className="mr-1" /> : null}
+              {comparisonState === 'overrides' ? <PencilLine size={10} className="mr-1" /> : null}
+              {comparisonState === 'base' ? <CircleDot size={10} className="mr-1" /> : null}
+              {comparisonState === 'matches'
+                ? t('editor.baseMatch')
+                : comparisonState === 'overrides'
+                  ? t('editor.baseOverride')
+                  : t('editor.baseUsed')}
+            </span>
+          ) : null}
+        </div>
+      ) : null}
       {renderWarning()}
     </div>
   );
@@ -137,7 +189,7 @@ export function StyleValueField({ property, value, onChange, onRemove }: Props) 
               onChange(result.normalizedValue);
             }
           }}
-          placeholder={schema.defaultValue || '#000000'}
+          placeholder={computedValue || schema.defaultValue || '#000000'}
           disabled={!isActive}
         />
       </div>
@@ -160,7 +212,7 @@ export function StyleValueField({ property, value, onChange, onRemove }: Props) 
               onChange(result.normalizedValue);
             }
           }}
-          placeholder={schema.defaultValue || '16px'}
+          placeholder={computedValue || schema.defaultValue || '16px'}
           disabled={!isActive}
         />
       );
@@ -221,7 +273,7 @@ export function StyleValueField({ property, value, onChange, onRemove }: Props) 
           onChange(result.normalizedValue);
         }
       }}
-      placeholder={schema.defaultValue || formatLabel(property)}
+      placeholder={contextualPlaceholder}
       disabled={!isActive}
     />
   );

@@ -43,6 +43,7 @@ function AppContent() {
     hoverTarget,
     getEditableStylesForState,
     getDefinedStatesForTarget,
+    computedStylesByTarget,
     createProject,
     loadProject,
     restoreDraft,
@@ -171,6 +172,7 @@ function AppContent() {
       onCopyStateFromDefault={copyStateFromDefault}
       getEditableStylesForState={getEditableStylesForState}
       getDefinedStatesForTarget={getDefinedStatesForTarget}
+      computedStylesByTarget={computedStylesByTarget}
       onExport={handleExport}
     />
   );

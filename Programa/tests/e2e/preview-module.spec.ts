@@ -371,3 +371,28 @@ test('preview-module applies open styles to data-state and aria-expanded targets
 
   await context.close();
 });
+
+test('preview-module returns computed styles for a scoped target on request', async ({ browser }) => {
+  const context = await browser.newContext({ baseURL: 'http://127.0.0.1:3000' });
+  const session = 'preview-computed-styles';
+
+  const harness = await context.newPage();
+  await setupOpenerHarness(harness);
+  const popupPromise = context.waitForEvent('page');
+  await openPreviewFromHarness(harness, session);
+  const preview = await popupPromise;
+  await preview.waitForLoadState('domcontentloaded');
+
+  await sendEditorMessage(harness, session, 'target:computedStyles:request', {
+    target: 'home.hero/home.title',
+    properties: ['color', 'fontSize', 'lineHeight'],
+  });
+
+  const response = await waitForMessage(harness, 'target:computedStyles:response');
+  expect(response.target).toBe('home.hero/home.title');
+  expect(response.styles.color).toMatch(/^rgb\(/);
+  expect(response.styles.fontSize).toBeTruthy();
+  expect(response.styles.lineHeight).toBeTruthy();
+
+  await context.close();
+});

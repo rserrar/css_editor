@@ -192,6 +192,42 @@
     return normalized;
   };
 
+  const getComputedStylesForTarget = (target, properties) => {
+    if (!Array.isArray(properties) || properties.length === 0) {
+      return {};
+    }
+
+    const selector = selectorForKey(target);
+    if (!selector) {
+      return {};
+    }
+
+    const element = document.querySelector(selector);
+    if (!element) {
+      return {};
+    }
+
+    const computed = window.getComputedStyle(element);
+    const result = {};
+
+    properties.forEach((property) => {
+      if (typeof property !== 'string' || !property) {
+        return;
+      }
+
+      const cssName = camelToKebab(property);
+      const value = computed.getPropertyValue(cssName);
+      if (typeof value === 'string') {
+        const normalizedValue = value.trim();
+        if (normalizedValue) {
+          result[property] = normalizedValue;
+        }
+      }
+    });
+
+    return result;
+  };
+
   const applyStyles = () => {
     let css = '';
     for (const [target, styles] of Object.entries(styleConfig)) {
@@ -325,6 +361,17 @@
           const elements = selector ? document.querySelectorAll(selector) : [];
           elements.forEach(el => el.classList.add(CONFIG.highlightClass));
         }
+        break;
+
+      case 'target:computedStyles:request':
+        if (!msg.target || !parseCanonicalKey(msg.target)) {
+          return;
+        }
+
+        send('target:computedStyles:response', {
+          target: msg.target,
+          styles: getComputedStylesForTarget(msg.target, msg.properties)
+        });
         break;
     }
   };

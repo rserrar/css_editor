@@ -71,8 +71,8 @@ export function TargetNavigator({ targets, selectedTarget, styledTargets, statef
       <div className="mb-3 space-y-3">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <div className="text-[11px] font-bold text-text-muted uppercase tracking-widest">{title}</div>
-            <div className="mt-1 text-[12px] text-text-muted">
+            <div className="text-[12px] font-bold text-text-muted uppercase tracking-widest">{title}</div>
+            <div className="mt-1 text-[13px] text-text-muted">
               {targets.length} {t('editor.totalTargets')} - {visibleCount} {t('editor.visibleTargets')}
             </div>
           </div>
@@ -81,14 +81,14 @@ export function TargetNavigator({ targets, selectedTarget, styledTargets, statef
             <button
               type="button"
               onClick={() => onSelect(null)}
-              className="shrink-0 rounded-md border border-border bg-white px-2 py-1 text-[11px] font-semibold text-text-muted hover:text-text-main hover:bg-slate-50"
+              className="shrink-0 rounded-md border border-border bg-white px-2 py-1 text-[12px] font-semibold text-text-muted hover:text-text-main hover:bg-slate-50"
             >
               {t('editor.clearSelection')}
             </button>
           )}
         </div>
 
-        <div className="flex flex-wrap gap-2 text-[11px]">
+        <div className="flex flex-wrap gap-2 text-[12px]">
           <span className="rounded-full border border-border bg-slate-50 px-2 py-1 text-text-muted">
             {styledTargets.size} {t('editor.styledTargetsCount')}
           </span>
@@ -110,7 +110,7 @@ export function TargetNavigator({ targets, selectedTarget, styledTargets, statef
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder={t('editor.filterTargets')}
-          className="w-full pl-9 pr-8 py-2 text-[12px] border border-border rounded bg-white focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all"
+          className="w-full pl-9 pr-8 py-2 text-[13px] border border-border rounded bg-white focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all"
         />
         {hasFilter && (
           <button
@@ -125,14 +125,14 @@ export function TargetNavigator({ targets, selectedTarget, styledTargets, statef
       </div>
 
       {filteredTargets.length === 0 ? (
-        <div className="flex-1 rounded-lg border border-dashed border-border bg-slate-50 px-4 py-6 text-center text-[12px] text-text-muted">
+        <div className="flex-1 rounded-lg border border-dashed border-border bg-slate-50 px-4 py-6 text-center text-[13px] text-text-muted">
           {emptyStateMessage}
         </div>
       ) : (
         <div className="flex-1 overflow-y-auto pr-2 space-y-4">
           {groups.map((group) => (
             <div key={group.key} className="space-y-1.5">
-              <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-text-muted">
+              <div className="flex items-center gap-2 text-[12px] font-bold uppercase tracking-widest text-text-muted">
                 <Layers3 size={12} />
                 <span>{group.label}</span>
               </div>
@@ -161,8 +161,8 @@ export function TargetNavigator({ targets, selectedTarget, styledTargets, statef
                       >
                       <div className="min-w-0">
                         <div className="text-[13px] font-medium truncate">{item.target}</div>
-                        <div className="text-[10px] opacity-70 truncate block">{item.scope}</div>
-                        <code className="text-[10px] opacity-60 font-mono truncate block">{item.full}</code>
+                        <div className="text-[11px] opacity-70 truncate block">{item.scope}</div>
+                        <code className="text-[11px] opacity-60 font-mono truncate block">{item.full}</code>
                       </div>
 
                       <div className="shrink-0 flex items-center gap-1 justify-center min-w-[28px]">

@@ -30,7 +30,10 @@ function renderPanel(props = {}) {
   return { onChange, onRemove, onStyleStateSelect, onCopyStateFromDefault };
 }
 
-afterEach(() => cleanup());
+afterEach(() => {
+  cleanup();
+  window.localStorage.clear();
+});
 
 function getStateButton(label: string) {
   return screen.getByText(label).closest('button') as HTMLButtonElement;
@@ -75,6 +78,24 @@ describe('StylePanel state selector', () => {
     expect(screen.getAllByText('color').length).toBeGreaterThan(0);
     expect(screen.getByText('fontSize')).toBeTruthy();
     expect(screen.getByText(/No reflecteix estils heretats/)).toBeTruthy();
+  });
+
+  it('shows computed browser values when provided by preview', () => {
+    renderPanel({
+      computedStyles: {
+        color: 'rgb(51, 51, 51)',
+        fontSize: '32px',
+        marginTop: '24px',
+      },
+    });
+
+    expect(screen.getByText('Valors detectats al navegador (base)')).toBeTruthy();
+    expect(screen.getByText('rgb(51, 51, 51)')).toBeTruthy();
+    expect(screen.getByText('32px')).toBeTruthy();
+    expect(screen.queryByText('24px')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Espaiat' }));
+    expect(screen.getByText('24px')).toBeTruthy();
   });
 
   it('adds contextual help to selected and open states', () => {
@@ -223,5 +244,47 @@ describe('StylePanel state selector', () => {
 
     fireEvent.click(screen.getByLabelText('color-enabled'));
     expect(onRemove).toHaveBeenCalledWith('color');
+  });
+
+  it('persists section open state between remounts', () => {
+    const { unmount } = render(
+      <I18nProvider>
+        <StylePanel
+          target="home.subscription/button.primary"
+          styles={{ color: '#000000' }}
+          configValue={{ default: { color: '#000000' } }}
+          selectedStyleState="default"
+          availableStates={['default']}
+          onStyleStateSelect={vi.fn()}
+          onCopyStateFromDefault={vi.fn()}
+          onChange={vi.fn()}
+          onRemove={vi.fn()}
+        />
+      </I18nProvider>,
+    );
+
+    expect(screen.queryByLabelText('marginTop-number')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Espaiat' }));
+    expect(screen.getByLabelText('marginTop-number')).toBeTruthy();
+
+    unmount();
+
+    render(
+      <I18nProvider>
+        <StylePanel
+          target="home.subscription/card"
+          styles={{ color: '#111111' }}
+          configValue={{ default: { color: '#111111' } }}
+          selectedStyleState="default"
+          availableStates={['default']}
+          onStyleStateSelect={vi.fn()}
+          onCopyStateFromDefault={vi.fn()}
+          onChange={vi.fn()}
+          onRemove={vi.fn()}
+        />
+      </I18nProvider>,
+    );
+
+    expect(screen.getByLabelText('marginTop-number')).toBeTruthy();
   });
 });

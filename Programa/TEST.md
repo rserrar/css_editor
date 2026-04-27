@@ -10,6 +10,7 @@ Guia curta per comprovar ràpidament que l'editor i la preview es connecten i qu
 - aplicació de canvis CSS en runtime
 - contracte actual de markup amb `data-editable-scope` i `data-editable`
 - estats semàntics com `selected` i `open`
+- lectura de valors computats de referència per target
 
 ## Comprovació ràpida
 
@@ -34,6 +35,7 @@ Guia curta per comprovar ràpidament que l'editor i la preview es connecten i qu
    - apareixen targets com `home.hero/home.title` i `home.subscription/form.label`
 6. Selecciona `home.hero/home.title` i canvia `color` a `#ff0000`
 7. Verifica que el títol de la preview es torna vermell
+8. Verifica que al panell veus `Base: ...` i un indicador (`igual`, `sobreescrit` o `base activa`)
 
 ## Requisit crític: obertura des de l'editor
 
@@ -94,8 +96,21 @@ També pots validar aquest flux automàticament amb `npm run test:e2e`.
    - a la llista de targets haurien d'aparèixer elements com `home.hero/home.title`, `layout.mainMenu/menu.option`, etc.
 
 5. **Proves d'edició**
-   - selecciona `home.hero/home.title`; hauries de veure un contorn blau a la web de preview
-   - canvia el `color` a `#ff0000` o el `fontSize` a `60px`; hauries de veure el canvi instantani a l'altra finestra
+    - selecciona `home.hero/home.title`; hauries de veure un contorn blau a la web de preview
+    - canvia el `color` a `#ff0000` o el `fontSize` a `60px`; hauries de veure el canvi instantani a l'altra finestra
+
+6. **Proves de referències de base**
+   - amb un target seleccionat, comprova que apareix el bloc de valors detectats al navegador
+   - comprova que es mostren per grups i que els grups desplegats tenen les seves referències visibles
+   - activa/desactiva una propietat i verifica el badge:
+     - `base activa` quan la propietat no està activada
+     - `igual` quan el valor editat coincideix amb la base
+     - `sobreescrit` quan l'edició difereix de la base
+
+7. **Persistència de plegables**
+   - obre un grup com `Espaiat`
+   - canvia de target
+   - verifica que el grup continua obert (recorda estat entre targets)
 
 ## Solució de problemes
 
@@ -103,6 +118,7 @@ També pots validar aquest flux automàticament amb `npm run test:e2e`.
 - **La finestra no s'obre**: revisa si el navegador ha bloquejat el pop-up; l'obertura ha de venir d'un clic directe de l'usuari
 - **Propietats no s'apliquen**: recorda que l'editor bloqueja caràcters perillosos com `;`; escriu només el valor, per exemple `red` i no `red;`
 - **Netejar estils**: per provar l'eliminació, passa el ratolí per sobre d'una propietat editada a l'editor i prem la `X`
+- **No surten valors base**: comprova que la preview està connectada i que el target existeix realment al DOM amb `data-editable-scope` + `data-editable`
 
 ## Contracte de markup i config
 
@@ -118,6 +134,8 @@ També pots validar aquest flux automàticament amb `npm run test:e2e`.
 
 - `programa/public/example-web.html` - markup de mostra alineat amb el contracte actual
 - `programa/public/preview-module.js` - implementació real de discovery i selectors
+- `programa/src/presentation/components/StylePanel.tsx` - agrupació visual i resum de valors detectats
+- `programa/src/presentation/components/StyleValueField.tsx` - indicador `igual/sobreescrit/base activa`
 - `programa/.agents/skills/prepare-editable-html/SKILL.md` - guia per etiquetar webs noves
 - `programa/.agents/skills/apply-exported-json-to-css/SKILL.md` - guia per portar l'export JSON a CSS persistent
 
@@ -135,3 +153,4 @@ També pots validar aquest flux automàticament amb `npm run test:e2e`.
 - l'editor mostra `Preview Connectada`
 - la sidebar mostra targets reals
 - un canvi de `color` o `fontSize` es veu a la preview
+- apareixen valors `Base` i badges de comparació als camps d'estil

@@ -24,6 +24,7 @@ interface Props {
   onCopyStateFromDefault: (target: string, state: RuntimeStyleState) => void;
   getEditableStylesForState: (target: string, state: RuntimeStyleState) => EditableStyleSet;
   getDefinedStatesForTarget: (target: string) => RuntimeStyleState[];
+  computedStylesByTarget: Record<string, EditableStyleSet>;
   onExport: () => void;
 }
 
@@ -42,6 +43,7 @@ export function EditorPage({
   onCopyStateFromDefault,
   getEditableStylesForState,
   getDefinedStatesForTarget,
+  computedStylesByTarget,
   onExport
 }: Props) {
   const { t, language, setLanguage } = useTranslation();
@@ -89,14 +91,14 @@ export function EditorPage({
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-bg-base">
       {/* Header Compact - 48px */}
-      <header className="h-[48px] bg-white border-b border-border px-4 flex items-center justify-between flex-shrink-0">
+      <header className="h-[56px] bg-white border-b border-border px-4 flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-3">
           <div className="w-6 h-6 bg-accent rounded flex items-center justify-center">
             <div className="w-2.5 h-2.5 bg-white rotate-45 scale-75"></div>
           </div>
           <div className="flex items-baseline gap-2">
             <span className="text-sm font-bold text-text-main">LiveStyle Editor</span>
-            <span className="text-[10px] text-text-muted font-mono opacity-50 uppercase tracking-widest leading-none">
+            <span className="text-[11px] text-text-muted font-mono opacity-50 uppercase tracking-widest leading-none">
               {project.project.siteKey || 'v1.1.0'}
             </span>
           </div>
@@ -108,7 +110,7 @@ export function EditorPage({
             <select 
               value={language} 
               onChange={(e) => setLanguage(e.target.value as Language)}
-              className="bg-transparent border-none focus:outline-none font-semibold text-text-main text-[10px] uppercase tracking-wider"
+              className="bg-transparent border-none focus:outline-none font-semibold text-text-main text-[11px] uppercase tracking-wider"
             >
               <option value="ca">CAT</option>
               <option value="es">ESP</option>
@@ -118,7 +120,7 @@ export function EditorPage({
           
           <button 
             onClick={onExport}
-            className="px-3 py-1.5 border border-border rounded bg-white text-[12px] font-medium hover:bg-slate-50 transition-colors"
+            className="px-3 py-1.5 border border-border rounded bg-white text-[13px] font-medium hover:bg-slate-50 transition-colors"
           >
             {t('editor.exportJson')}
           </button>
@@ -129,15 +131,15 @@ export function EditorPage({
         {/* Sidebar Compact - 260px */}
         <aside className="w-[260px] bg-white border-r border-border flex flex-col flex-shrink-0">
           <div className="p-4 border-b border-border">
-            <div className="text-[11px] font-bold text-text-muted uppercase tracking-widest mb-3">{t('editor.activeProject')}</div>
+            <div className="text-[12px] font-bold text-text-muted uppercase tracking-widest mb-3">{t('editor.activeProject')}</div>
             <div className="bg-slate-50 border border-border rounded-md p-3">
               <div className="font-bold text-sm truncate">{project.project.name}</div>
-              <div className="text-[11px] text-text-muted truncate mt-1">{project.project.baseUrl}</div>
-              <div className={`flex items-center gap-1.5 mt-2 text-[11px] font-bold ${connectionTone}`}>
+              <div className="text-[12px] text-text-muted truncate mt-1">{project.project.baseUrl}</div>
+              <div className={`flex items-center gap-1.5 mt-2 text-[12px] font-bold ${connectionTone}`}>
                 <div className={`w-1.5 h-1.5 rounded-full ${connectionDot}`} />
                 {connectionLabel}
               </div>
-              <div className="mt-3 space-y-1 text-[11px] text-text-muted font-mono">
+              <div className="mt-3 space-y-1 text-[12px] text-text-muted font-mono">
                 <div><span className="font-semibold not-italic">{t('editor.projectSiteKey')}:</span> {projectSiteKey}</div>
                 <div><span className="font-semibold not-italic">{t('editor.previewSiteKey')}:</span> {previewSiteKey}</div>
                 <div><span className="font-semibold not-italic">{t('editor.currentSiteKey')}:</span> {preview?.site.siteKey || projectSiteKey}</div>
@@ -182,7 +184,7 @@ export function EditorPage({
                       <div className="text-sm">{t('editor.compatibilityOk')}</div>
                     )}
                     {!hasTargetDiagnostics && compatibilityReport.severity !== 'error' ? (
-                      <div className="text-[11px] uppercase tracking-widest font-bold opacity-70">
+                      <div className="text-[12px] uppercase tracking-widest font-bold opacity-70">
                         {t('editor.noTargetIssues')}
                       </div>
                     ) : null}
@@ -201,6 +203,7 @@ export function EditorPage({
                      configValue={project.config[selectedTarget]}
                      selectedStyleState={selectedStyleState}
                      availableStates={definedStates}
+                     computedStyles={computedStylesByTarget[selectedTarget]}
                      onStyleStateSelect={onStyleStateSelect}
                      onCopyStateFromDefault={() => onCopyStateFromDefault(selectedTarget, selectedStyleState)}
                      onChange={(styles) => onUpdateStyle(selectedTarget, selectedStyleState, styles)}
@@ -210,7 +213,7 @@ export function EditorPage({
               ) : (
                 <div className="text-center py-20 bg-white border border-dashed border-border rounded-xl">
                   <div className="text-text-muted mb-2 font-semibold font-sans">{t('editor.selectTargetPrompt')}</div>
-                   <div className="text-[11px] text-text-muted opacity-50 uppercase tracking-widest italic font-mono">{t('editor.waitingInput')}</div>
+                   <div className="text-[12px] text-text-muted opacity-60 uppercase tracking-widest italic font-mono">{t('editor.waitingInput')}</div>
                  </div>
                )}
 
@@ -224,7 +227,7 @@ export function EditorPage({
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {missingTargets.length > 0 && (
                       <div>
-                        <div className="text-[11px] font-bold uppercase tracking-widest text-text-muted mb-2">
+                        <div className="text-[12px] font-bold uppercase tracking-widest text-text-muted mb-2">
                           {t('editor.missingTargets')} ({missingTargets.length})
                         </div>
                         <div className="space-y-1">
@@ -237,7 +240,7 @@ export function EditorPage({
 
                     {newTargets.length > 0 && (
                       <div>
-                        <div className="text-[11px] font-bold uppercase tracking-widest text-text-muted mb-2">
+                        <div className="text-[12px] font-bold uppercase tracking-widest text-text-muted mb-2">
                           {t('editor.newTargets')} ({newTargets.length})
                         </div>
                         <div className="space-y-1">
@@ -254,7 +257,7 @@ export function EditorPage({
           </div>
 
           {/* Footer Status */}
-          <footer className="h-7 bg-white border-top border-border px-3 flex items-center justify-between shrink-0 text-[11px] text-text-muted font-mono">
+          <footer className="h-8 bg-white border-top border-border px-3 flex items-center justify-between shrink-0 text-[12px] text-text-muted font-mono">
             <div>{t('editor.session')}: {project.project.projectId.slice(0, 8)} | {t('editor.protocol')}: 1.0.0</div>
             <div>
               {t('editor.target')}: {selectedTargetParts ? `${selectedTargetParts.scope} / ${selectedTargetParts.target}` : t('editor.noTargetSelectedShort')}

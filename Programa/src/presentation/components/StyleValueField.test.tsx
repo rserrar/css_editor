@@ -14,6 +14,7 @@ function renderField(props: Partial<ComponentProps<typeof StyleValueField>> & { 
       <StyleValueField
         property={props.property}
         value={props.value ?? '16px'}
+        computedValue={props.computedValue}
         onChange={onChange}
         onRemove={onRemove}
       />
@@ -118,5 +119,26 @@ describe('StyleValueField', () => {
 
     fireEvent.change(screen.getByLabelText('backgroundColor-picker'), { target: { value: '#00ff00' } });
     expect(onChange).toHaveBeenCalledWith('#00ff00');
+  });
+
+  it('shows computed base value as guidance when field is disabled', () => {
+    renderField({ property: 'fontSize', value: '', computedValue: '18px' });
+
+    expect(screen.getByText('Base: 18px')).toBeTruthy();
+    expect(screen.getByText('base activa')).toBeTruthy();
+  });
+
+  it('keeps showing computed base value while editing active fields', () => {
+    renderField({ property: 'fontSize', value: '24px', computedValue: '18px' });
+
+    expect(screen.getByText('Base: 18px')).toBeTruthy();
+    expect(screen.getByText('sobreescrit')).toBeTruthy();
+    expect((screen.getByLabelText('fontSize-number') as HTMLInputElement).value).toBe('24');
+  });
+
+  it('shows match indicator when edited value equals computed base', () => {
+    renderField({ property: 'color', value: '#ff0000', computedValue: '#ff0000' });
+
+    expect(screen.getByText('igual')).toBeTruthy();
   });
 });

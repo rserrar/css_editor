@@ -1,12 +1,58 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { ProjectFile, EditableStyleSet, PreviewInfoResponse, AllowedStyleKey, CompatibilityReport } from '../domain/models';
+import { ProjectFile, EditableStyleSet, PreviewInfoResponse, AllowedStyleKey, CompatibilityReport, TargetComputedStylesResponse } from '../domain/models';
 import { PostMessageTransport } from '../infrastructure/transport/PostMessageTransport';
 import { PreviewClient } from '../adapters/PreviewClient';
 import { ProjectService } from '../domain/projectService';
 import { CompatibilityService } from '../domain/compatibilityService';
 import { DraftStorage, DraftSummary } from '../infrastructure/storage/draftStorage';
 import { getDefinedStates, getStateStyles, RuntimeStyleState } from '../domain/styleStateHelpers';
+
+const COMPUTED_TEXT_PROPERTIES: AllowedStyleKey[] = [
+  'fontFamily',
+  'fontSize',
+  'fontWeight',
+  'fontStyle',
+  'textAlign',
+  'textTransform',
+  'textDecoration',
+  'lineHeight',
+  'letterSpacing',
+  'color',
+];
+
+const COMPUTED_SPACING_PROPERTIES: AllowedStyleKey[] = [
+  'marginTop',
+  'marginBottom',
+  'marginLeft',
+  'marginRight',
+  'paddingTop',
+  'paddingBottom',
+  'paddingLeft',
+  'paddingRight',
+];
+
+const COMPUTED_SURFACE_PROPERTIES: AllowedStyleKey[] = [
+  'backgroundColor',
+  'borderColor',
+  'borderWidth',
+  'borderRadius',
+];
+
+const COMPUTED_IMAGE_PROPERTIES: AllowedStyleKey[] = [
+  'backgroundSize',
+  'backgroundPosition',
+  'backgroundRepeat',
+  'objectFit',
+  'objectPosition',
+];
+
+const COMPUTED_PROPERTIES_GROUPS: AllowedStyleKey[][] = [
+  COMPUTED_TEXT_PROPERTIES,
+  COMPUTED_SPACING_PROPERTIES,
+  COMPUTED_SURFACE_PROPERTIES,
+  COMPUTED_IMAGE_PROPERTIES,
+];
 
 export function useEditor(sessionId: string, getPreviewWindow: () => Window | null, getPreviewOrigin: () => string | null) {
   const [project, setProject] = useState<ProjectFile | null>(null);
@@ -16,6 +62,7 @@ export function useEditor(sessionId: string, getPreviewWindow: () => Window | nu
   const [isConnected, setIsConnected] = useState(false);
   const [compatibilityReport, setCompatibilityReport] = useState<CompatibilityReport | null>(null);
   const [availableDraft, setAvailableDraft] = useState<DraftSummary | null>(null);
+  const [computedStylesByTarget, setComputedStylesByTarget] = useState<Record<string, EditableStyleSet>>({});
 
   const projectRef = useRef<ProjectFile | null>(null);
   const previewRef = useRef<PreviewInfoResponse | null>(null);
@@ -52,6 +99,17 @@ export function useEditor(sessionId: string, getPreviewWindow: () => Window | nu
         const info = msg as PreviewInfoResponse;
         setPreviewInfo(info);
         setIsConnected(true);
+      }
+
+      if (msg.type === 'target:computedStyles:response' && msg.source === 'preview') {
+        const response = msg as TargetComputedStylesResponse;
+        setComputedStylesByTarget((current) => ({
+          ...current,
+          [response.target]: {
+            ...(current[response.target] || {}),
+            ...response.styles,
+          },
+        }));
       }
     });
 
@@ -121,6 +179,16 @@ export function useEditor(sessionId: string, getPreviewWindow: () => Window | nu
     setSelectedTarget(target);
     setSelectedStyleState('default');
     client.highlight(target);
+    if (target) {
+      setComputedStylesByTarget((current) => ({
+        ...current,
+        [target]: {},
+      }));
+
+      COMPUTED_PROPERTIES_GROUPS.forEach((group) => {
+        client.requestComputedStyles(target, group);
+      });
+    }
   }, [client]);
 
   const hoverTarget = useCallback((target: string | null) => {
@@ -186,6 +254,7 @@ export function useEditor(sessionId: string, getPreviewWindow: () => Window | nu
     loadProject,
     restoreDraft,
     discardDraft,
+    computedStylesByTarget,
     getEditableStylesForState: (target: string, state: RuntimeStyleState) => project ? getStateStyles(project.config[target], state) : {},
     getDefinedStatesForTarget: (target: string) => project ? getDefinedStates(project.config[target]) : [],
   };

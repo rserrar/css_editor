@@ -29,7 +29,30 @@ Exemple:
 2. la preview escaneja el DOM i detecta keys canòniques `scope/target`
 3. l'editor crea o carrega un `ProjectFile` amb `config` stateful
 4. durant l'edició, la preview genera CSS runtime a partir del `config`
-5. en exportar, el projecte es desa com JSON i es pot convertir en CSS persistent per integrar-lo a la web real
+5. quan selecciones un target, l'editor demana valors computats de referència (per grups) a la preview
+6. en exportar, el projecte es desa com JSON i es pot convertir en CSS persistent per integrar-lo a la web real
+
+## Referencies de base (computed styles)
+
+L'editor pot mostrar valors detectats al navegador per ajudar a decidir que cal sobreescriure.
+
+- la petició es fa per grups de propietats (`text`, `spacing`, `surface`, `image`)
+- la preview respon amb valors computats del target seleccionat (`getComputedStyle`)
+- aquests valors son orientatius: no modifiquen el `config` per si sols
+- cada camp mostra `Base: ...` i un indicador:
+  - `igual` (coincideix amb la base)
+  - `sobreescrit` (diferent de la base)
+  - `base activa` (propietat no activada al config)
+
+Missatges de protocol nous:
+
+- `target:computedStyles:request`
+- `target:computedStyles:response`
+
+## Panell d'estils
+
+- els grups plegables del `StylePanel` recorden l'estat entre canvis de target (persistit a `localStorage`)
+- el resum de valors detectats mostra sempre les propietats habituals i, a mes, els grups que tinguis desplegats
 
 ## Contracte de preview i markup
 
@@ -80,6 +103,7 @@ Notes importants:
 - `config` només accepta valors stateful
 - `default` és obligatori a cada target
 - les propietats CSS del `config` es guarden en camelCase i la preview les converteix a kebab-case quan genera CSS
+- els valors computats detectats no es persisteixen al fitxer exportat
 
 ## Skills disponibles
 

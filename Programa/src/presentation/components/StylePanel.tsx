@@ -1,5 +1,5 @@
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { AllowedStyleKey, ALLOWED_CSS_PROPERTIES, EditableStyleSet, StatefulStyleSet } from '../../domain/models';
 import { useTranslation } from '../../infrastructure/i18n/I18nContext';
 import { ChevronDown, X } from 'lucide-react';
@@ -11,6 +11,7 @@ interface Props {
   target: string;
   styles: EditableStyleSet;
   configValue?: StatefulStyleSet;
+  computedStyles?: EditableStyleSet;
   selectedStyleState: RuntimeStyleState;
   availableStates: RuntimeStyleState[];
   onStyleStateSelect: (state: RuntimeStyleState) => void;
@@ -39,18 +40,48 @@ const PROPERTY_GROUPS: Array<{ titleKey: 'textGroup' | 'spacingGroup' | 'surface
 ];
 
 const ESSENTIAL_PROPERTIES: AllowedStyleKey[] = ['color', 'fontSize', 'fontWeight', 'lineHeight', 'backgroundColor', 'borderRadius'];
+const PANEL_SECTIONS_STORAGE_KEY = 'livestyle:style-panel:open-sections:v1';
+const DEFAULT_OPEN_SECTIONS = {
+  spacingGroup: false,
+  surfaceGroup: false,
+  imageGroup: false,
+  textGroup: true,
+};
 
-export function StylePanel({ target, styles, configValue, selectedStyleState, availableStates, onStyleStateSelect, onCopyStateFromDefault, onChange, onRemove }: Props) {
+function readPersistedOpenSections(): Record<string, boolean> {
+  if (typeof window === 'undefined') {
+    return DEFAULT_OPEN_SECTIONS;
+  }
+
+  try {
+    const rawValue = window.localStorage.getItem(PANEL_SECTIONS_STORAGE_KEY);
+    if (!rawValue) {
+      return DEFAULT_OPEN_SECTIONS;
+    }
+
+    const parsed = JSON.parse(rawValue);
+    if (!parsed || typeof parsed !== 'object') {
+      return DEFAULT_OPEN_SECTIONS;
+    }
+
+    return {
+      ...DEFAULT_OPEN_SECTIONS,
+      spacingGroup: parsed.spacingGroup === true,
+      surfaceGroup: parsed.surfaceGroup === true,
+      imageGroup: parsed.imageGroup === true,
+      textGroup: parsed.textGroup !== false,
+    };
+  } catch {
+    return DEFAULT_OPEN_SECTIONS;
+  }
+}
+
+export function StylePanel({ target, styles, configValue, computedStyles, selectedStyleState, availableStates, onStyleStateSelect, onCopyStateFromDefault, onChange, onRemove }: Props) {
   const { t } = useTranslation();
   const detectedStates = getDefinedStates(configValue);
   const extraStates = detectedStates.filter((state) => state !== 'default');
   const targetParts = tryParseCanonicalKey(target);
-  const [openSections, setOpenSections] = useState<Record<string, boolean>>({
-    spacingGroup: false,
-    surfaceGroup: false,
-    imageGroup: false,
-    textGroup: true,
-  });
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>(readPersistedOpenSections);
 
   const visibleGroups = useMemo(() => PROPERTY_GROUPS.map((group) => ({
     ...group,
@@ -64,6 +95,24 @@ export function StylePanel({ target, styles, configValue, selectedStyleState, av
     () => Object.entries(styles).filter(([, value]) => Boolean(value)) as Array<[AllowedStyleKey, string]>,
     [styles],
   );
+  const computedStyleEntries = useMemo(
+    () => Object.entries(computedStyles || {}).filter(([, value]) => Boolean(value)) as Array<[AllowedStyleKey, string]>,
+    [computedStyles],
+  );
+  const computedByVisibleGroup = useMemo(() => {
+    return visibleGroups
+      .filter((group) => openSections[group.titleKey])
+      .map((group) => ({
+        titleKey: group.titleKey,
+        entries: computedStyleEntries.filter(([property]) => group.properties.includes(property)),
+      }))
+      .filter((group) => group.entries.length > 0);
+  }, [computedStyleEntries, openSections, visibleGroups]);
+  const computedEssentialEntries = useMemo(
+    () => computedStyleEntries.filter(([property]) => essentialProperties.includes(property)),
+    [computedStyleEntries, essentialProperties],
+  );
+  const hasVisibleComputedValues = computedEssentialEntries.length > 0 || computedByVisibleGroup.length > 0;
 
   const getSemanticStateHelp = (state: RuntimeStyleState): string | null => {
     if (state === 'selected') return t('editor.stateSelectedHelp');
@@ -80,14 +129,26 @@ export function StylePanel({ target, styles, configValue, selectedStyleState, av
     }));
   };
 
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    try {
+      window.localStorage.setItem(PANEL_SECTIONS_STORAGE_KEY, JSON.stringify(openSections));
+    } catch {
+      // Ignore localStorage write issues in restricted environments.
+    }
+  }, [openSections]);
+
   return (
     <div className="bg-white border border-border rounded-lg shadow-sm">
       <div className="px-4 py-3 border-b border-border bg-slate-50/50 rounded-t-lg">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div className="min-w-0">
-            <div className="text-[11px] font-bold text-text-muted uppercase tracking-wider">{t('editor.typographyVisuals')}</div>
+            <div className="text-[12px] font-bold text-text-muted uppercase tracking-wider">{t('editor.typographyVisuals')}</div>
             <div className="mt-1 text-base font-bold text-text-main break-all">{targetParts?.target || target}</div>
-            <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-text-muted font-mono">
+            <div className="mt-1 flex flex-wrap items-center gap-2 text-[12px] text-text-muted font-mono">
               {targetParts?.scope ? <span>{t('editor.scope')}: {targetParts.scope}</span> : null}
               <span>{t('editor.state')}: {selectedStyleState}</span>
               <span className="inline-flex items-center rounded-full border border-border bg-white px-2 py-0.5 font-semibold text-text-main">
@@ -95,12 +156,12 @@ export function StylePanel({ target, styles, configValue, selectedStyleState, av
               </span>
             </div>
             {currentStateHelp ? (
-              <div className="mt-2 max-w-2xl text-[11px] text-text-muted leading-relaxed">{currentStateHelp}</div>
+              <div className="mt-2 max-w-2xl text-[12px] text-text-muted leading-relaxed">{currentStateHelp}</div>
             ) : null}
           </div>
 
           <div className="lg:max-w-[340px]">
-            <div className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-2">{t('editor.state')}</div>
+            <div className="text-[11px] font-bold text-text-muted uppercase tracking-widest mb-2">{t('editor.state')}</div>
             <div className="flex flex-wrap gap-2">
           {RUNTIME_STYLE_STATES.map((state) => {
             const isActive = selectedStyleState === state;
@@ -116,7 +177,7 @@ export function StylePanel({ target, styles, configValue, selectedStyleState, av
                 title={title}
                 data-state-defined={isDefined ? 'true' : 'false'}
                 onClick={() => onStyleStateSelect(state)}
-                className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition-colors border flex items-center gap-1.5 ${
+                className={`px-2.5 py-1 rounded-full text-[12px] font-semibold transition-colors border flex items-center gap-1.5 ${
                   isActive
                     ? 'bg-accent text-white border-accent'
                     : isDefined
@@ -149,7 +210,7 @@ export function StylePanel({ target, styles, configValue, selectedStyleState, av
       
       <div className="p-4 space-y-4">
         <section className="border border-border rounded-lg overflow-hidden">
-          <div className="px-4 py-2.5 bg-slate-50 border-b border-border text-[11px] font-bold uppercase tracking-widest text-text-muted">
+          <div className="px-4 py-2.5 bg-slate-50 border-b border-border text-[12px] font-bold uppercase tracking-widest text-text-muted">
             {t('editor.quickStyles')}
           </div>
           <div className="p-4 space-y-3">
@@ -157,7 +218,7 @@ export function StylePanel({ target, styles, configValue, selectedStyleState, av
               {essentialProperties.map((prop) => (
                 <div key={`${target}:${selectedStyleState}:essential:${prop}`} className="flex flex-col gap-1.5 group relative">
                   <div className="flex justify-between items-center">
-                    <label className="text-[12px] font-semibold text-text-muted">
+                    <label className="text-[13px] font-semibold text-text-muted">
                       {prop.replace(/([A-Z])/g, ' $1').trim()}
                     </label>
                     {styles[prop] && (
@@ -170,33 +231,76 @@ export function StylePanel({ target, styles, configValue, selectedStyleState, av
                     )}
                   </div>
                   <StyleValueField
-                    property={prop}
-                    value={styles[prop] || ''}
-                    onChange={(value) => onChange({ [prop]: value })}
-                    onRemove={() => onRemove(prop)}
-                  />
+                     property={prop}
+                     value={styles[prop] || ''}
+                     computedValue={computedStyles?.[prop]}
+                     onChange={(value) => onChange({ [prop]: value })}
+                     onRemove={() => onRemove(prop)}
+                   />
                 </div>
               ))}
             </div>
 
             <div className="rounded-md border border-dashed border-border bg-slate-50 px-3 py-2">
-              <div className="text-[10px] font-bold uppercase tracking-widest text-text-muted mb-2">
+              <div className="text-[11px] font-bold uppercase tracking-widest text-text-muted mb-2">
                 {t('editor.definedStylesSummary')}
               </div>
               {definedCurrentProperties.length > 0 ? (
                 <div className="flex flex-wrap gap-2">
                   {definedCurrentProperties.map(([property, value]) => (
-                    <span key={`${property}:${value}`} className="inline-flex max-w-full items-center gap-1 rounded-full border border-border bg-white px-2 py-1 text-[11px] text-text-main">
+                    <span key={`${property}:${value}`} className="inline-flex max-w-full items-center gap-1 rounded-full border border-border bg-white px-2 py-1 text-[12px] text-text-main">
                       <span className="font-semibold">{property}</span>
                       <span className="truncate font-mono text-text-muted">{value}</span>
                     </span>
                   ))}
                 </div>
               ) : (
-                <div className="text-[11px] text-text-muted">{t('editor.noDefinedStylesInState')}</div>
+                <div className="text-[12px] text-text-muted">{t('editor.noDefinedStylesInState')}</div>
               )}
-              <div className="mt-2 text-[11px] text-text-muted">{t('editor.definedStylesHint')}</div>
+              <div className="mt-2 text-[12px] text-text-muted">{t('editor.definedStylesHint')}</div>
             </div>
+
+            {hasVisibleComputedValues ? (
+              <div className="rounded-md border border-dashed border-border bg-sky-50/60 px-3 py-2">
+                <div className="text-[11px] font-bold uppercase tracking-widest text-text-muted mb-2">
+                  {t('editor.detectedBaseStyles')}
+                </div>
+                <div className="space-y-2">
+                  {computedEssentialEntries.length > 0 ? (
+                    <div key="computed-group:quickStyles">
+                      <div className="text-[11px] font-bold uppercase tracking-widest text-text-muted mb-1">
+                        {t('editor.quickStyles')}
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {computedEssentialEntries.map(([property, value]) => (
+                          <span key={`computed:essential:${property}:${value}`} className="inline-flex max-w-full items-center gap-1 rounded-full border border-border bg-white px-2 py-1 text-[12px] text-text-main">
+                            <span className="font-semibold">{property}</span>
+                            <span className="truncate font-mono text-text-muted">{value}</span>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {computedByVisibleGroup.map((group) => (
+                    <div key={`computed-group:${group.titleKey}`}>
+                      <div className="text-[11px] font-bold uppercase tracking-widest text-text-muted mb-1">
+                        {t(`editor.${group.titleKey}` as any)}
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {group.entries.map(([property, value]) => (
+                          <span key={`computed:${property}:${value}`} className="inline-flex max-w-full items-center gap-1 rounded-full border border-border bg-white px-2 py-1 text-[12px] text-text-main">
+                            <span className="font-semibold">{property}</span>
+                            <span className="truncate font-mono text-text-muted">{value}</span>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-2 text-[12px] text-text-muted">{t('editor.detectedBaseStylesHint')}</div>
+              </div>
+            ) : null}
           </div>
         </section>
 
@@ -205,7 +309,7 @@ export function StylePanel({ target, styles, configValue, selectedStyleState, av
             <button
               type="button"
               onClick={() => toggleSection(group.titleKey)}
-              className="w-full px-4 py-2.5 bg-slate-50 border-b border-border text-[11px] font-bold uppercase tracking-widest text-text-muted flex items-center justify-between text-left"
+              className="w-full px-4 py-2.5 bg-slate-50 border-b border-border text-[12px] font-bold uppercase tracking-widest text-text-muted flex items-center justify-between text-left"
             >
               <span>{t(`editor.${group.titleKey}` as any)}</span>
               <ChevronDown size={14} className={`transition-transform ${openSections[group.titleKey] ? 'rotate-180' : ''}`} />
@@ -215,7 +319,7 @@ export function StylePanel({ target, styles, configValue, selectedStyleState, av
               {group.properties.map((prop) => (
                 <div key={`${target}:${selectedStyleState}:${prop}`} className="flex flex-col gap-1.5 group relative">
                   <div className="flex justify-between items-center">
-                    <label className="text-[12px] font-semibold text-text-muted">
+                    <label className="text-[13px] font-semibold text-text-muted">
                       {prop.replace(/([A-Z])/g, ' $1').trim()}
                     </label>
                     {styles[prop] && (
@@ -230,6 +334,7 @@ export function StylePanel({ target, styles, configValue, selectedStyleState, av
                   <StyleValueField
                     property={prop}
                     value={styles[prop] || ''}
+                    computedValue={computedStyles?.[prop]}
                     onChange={(value) => onChange({ [prop]: value })}
                     onRemove={() => onRemove(prop)}
                   />
@@ -245,12 +350,12 @@ export function StylePanel({ target, styles, configValue, selectedStyleState, av
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div className="space-y-1">
                 {extraStates.length > 0 ? (
-                  <div className="text-[11px] text-amber-700 font-medium">
+                  <div className="text-[12px] text-amber-700 font-medium">
                     {t('editor.detectedStateVariants')}: {extraStates.join(', ')}
                   </div>
                 ) : null}
                 {selectedStyleState !== 'default' ? (
-                  <div className="text-[11px] text-text-muted">{t('editor.copyStateHint')}</div>
+                  <div className="text-[12px] text-text-muted">{t('editor.copyStateHint')}</div>
                 ) : null}
               </div>
 
@@ -258,7 +363,7 @@ export function StylePanel({ target, styles, configValue, selectedStyleState, av
                 <button
                   type="button"
                   onClick={onCopyStateFromDefault}
-                  className="inline-flex items-center justify-center rounded-md border border-accent/20 bg-white px-3 py-2 text-[12px] font-semibold text-accent hover:bg-accent/5 transition-colors"
+                  className="inline-flex items-center justify-center rounded-md border border-accent/20 bg-white px-3 py-2 text-[13px] font-semibold text-accent hover:bg-accent/5 transition-colors"
                 >
                   {t('editor.copyFromDefault')}
                 </button>

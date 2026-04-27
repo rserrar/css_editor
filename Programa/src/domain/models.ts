@@ -123,11 +123,19 @@ export interface PreviewInfoResponse extends BaseMessage {
   };
 }
 
+export interface TargetComputedStylesResponse extends BaseMessage {
+  type: 'target:computedStyles:response';
+  target: string;
+  styles: EditableStyleSet;
+}
+
 export type ProtocolMessage = 
   | BaseMessage 
   | PreviewInfoResponse 
+  | TargetComputedStylesResponse
   | { type: 'hello' } & BaseMessage
   | { type: 'config:request' } & BaseMessage
   | { type: 'project:load'; project: ProjectInfo } & BaseMessage
   | { type: 'highlight'; target: string | null } & BaseMessage
+  | { type: 'target:computedStyles:request'; target: string; properties: AllowedStyleKey[] } & BaseMessage
   | { type: 'config:replaceAll'; config: StyleConfig } & BaseMessage;

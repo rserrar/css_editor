@@ -1,6 +1,6 @@
 
 import { Transport } from '../infrastructure/transport/Transport';
-import { ProtocolMessage, ProjectInfo, StyleConfig } from '../domain/models';
+import { AllowedStyleKey, ProtocolMessage, ProjectInfo, StyleConfig } from '../domain/models';
 
 export class PreviewClient {
   constructor(private transport: Transport, private sessionId: string) {}
@@ -40,6 +40,14 @@ export class PreviewClient {
     this.transport.send({
       ...this.createMessage('config:replaceAll'),
       config,
+    });
+  }
+
+  requestComputedStyles(target: string, properties: AllowedStyleKey[]) {
+    this.transport.send({
+      ...this.createMessage('target:computedStyles:request'),
+      target,
+      properties,
     });
   }
 }
