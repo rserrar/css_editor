@@ -9,7 +9,7 @@ import {
 } from './styleStates';
 
 describe('styleStates', () => {
-  it('defines a stable ordered list of supported future state ids', () => {
+  it('defines a stable ordered list of supported runtime state ids', () => {
     expect(STYLE_STATE_IDS).toEqual([
       'default',
       'hover',
@@ -18,9 +18,6 @@ describe('styleStates', () => {
       'disabled',
       'selected',
       'open',
-      'expanded',
-      'current',
-      'checked',
     ]);
     expect(DEFAULT_STYLE_STATE).toBe('default');
   });
@@ -39,9 +36,9 @@ describe('styleStates', () => {
     expect(isStyleStateId('pressed')).toBe(false);
   });
 
-  it('exposes selector or dom hints for future implementation', () => {
+  it('exposes selector or dom hints for supported states', () => {
     expect(getStyleStateDefinition('hover').selectorHint).toBe(':hover');
     expect(getStyleStateDefinition('selected').domSignals).toContain('aria-selected="true"');
-    expect(getStyleStateDefinition('checked').domSignals).toContain('checked');
+    expect(getStyleStateDefinition('open').domSignals).toContain('aria-expanded="true"');
   });
 });

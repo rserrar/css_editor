@@ -6,7 +6,7 @@ import { PreviewClient } from '../adapters/PreviewClient';
 import { ProjectService } from '../domain/projectService';
 import { CompatibilityService } from '../domain/compatibilityService';
 import { DraftStorage, DraftSummary } from '../infrastructure/storage/draftStorage';
-import { canUseIncrementalDefaultMessages, getDefinedStates, getStateStyles, RuntimeStyleState } from '../domain/styleStateHelpers';
+import { getDefinedStates, getStateStyles, RuntimeStyleState } from '../domain/styleStateHelpers';
 
 export function useEditor(sessionId: string, getPreviewWindow: () => Window | null, getPreviewOrigin: () => string | null) {
   const [project, setProject] = useState<ProjectFile | null>(null);
@@ -80,17 +80,25 @@ export function useEditor(sessionId: string, getPreviewWindow: () => Window | nu
     setAvailableDraft(DraftStorage.getSummary(sessionId));
   }, [sessionId, project, previewInfo]);
 
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      const previewWindow = getPreviewWindow();
+      if (!previewWindow && (isConnected || previewRef.current)) {
+        setIsConnected(false);
+        setPreviewInfo(null);
+      }
+    }, 1000);
+
+    return () => window.clearInterval(intervalId);
+  }, [getPreviewWindow, isConnected]);
+
   const updateStyle = useCallback((target: string, state: RuntimeStyleState, styles: EditableStyleSet) => {
     if (!project) return;
     const sanitized = ProjectService.sanitizeStyles(styles);
     const nextConfig = ProjectService.updateConfig(project.config, target, sanitized, state);
     setProject(prev => prev ? { ...prev, config: nextConfig } : null);
 
-    if (canUseIncrementalDefaultMessages(project.config[target], state)) {
-      client.updateStyle(target, sanitized);
-    } else {
-      client.sendFullConfig(nextConfig);
-    }
+    client.sendFullConfig(nextConfig);
   }, [client, project]);
 
   const removeStyle = useCallback((target: string, state: RuntimeStyleState, key: AllowedStyleKey) => {
@@ -98,11 +106,7 @@ export function useEditor(sessionId: string, getPreviewWindow: () => Window | nu
     const nextConfig = ProjectService.removeStylesFromConfig(project.config, target, [key], state);
     setProject(prev => prev ? { ...prev, config: nextConfig } : null);
 
-    if (canUseIncrementalDefaultMessages(project.config[target], state)) {
-      client.removeStyles(target, [key]);
-    } else {
-      client.sendFullConfig(nextConfig);
-    }
+    client.sendFullConfig(nextConfig);
   }, [client, project]);
 
   const copyStateFromDefault = useCallback((target: string, destinationState: RuntimeStyleState) => {
@@ -120,8 +124,8 @@ export function useEditor(sessionId: string, getPreviewWindow: () => Window | nu
   }, [client]);
 
   const hoverTarget = useCallback((target: string | null) => {
-    client.highlight(target);
-  }, [client]);
+    client.highlight(target ?? selectedTarget);
+  }, [client, selectedTarget]);
 
   const createProject = (url: string) => {
     const sourcePreview = previewRef.current ? CompatibilityService.buildSourcePreview(previewRef.current) : undefined;
@@ -182,7 +186,6 @@ export function useEditor(sessionId: string, getPreviewWindow: () => Window | nu
     loadProject,
     restoreDraft,
     discardDraft,
-    getEditableStyles: (target: string) => project ? getStateStyles(project.config[target], 'default') : {},
     getEditableStylesForState: (target: string, state: RuntimeStyleState) => project ? getStateStyles(project.config[target], state) : {},
     getDefinedStatesForTarget: (target: string) => project ? getDefinedStates(project.config[target]) : [],
   };

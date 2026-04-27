@@ -20,6 +20,7 @@ export function StartScreen({ onNew, onLoad, draftSummary, onRestoreDraft, onDis
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    e.target.value = '';
     if (file) {
       const previewWindow = window.open('', 'live-style-preview');
       onLoad(file, previewWindow);
@@ -46,6 +47,12 @@ export function StartScreen({ onNew, onLoad, draftSummary, onRestoreDraft, onDis
         animate={{ opacity: 1, y: 0 }}
         className="max-w-4xl w-full space-y-6"
       >
+        {startError && (
+          <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-[13px] text-rose-700 shadow-sm">
+            {startError}
+          </div>
+        )}
+
         {draftSummary && (
           <div className="bg-white border border-amber-200 rounded-xl shadow-sm p-6">
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -107,7 +114,7 @@ export function StartScreen({ onNew, onLoad, draftSummary, onRestoreDraft, onDis
               {t('start.startEditing')}
             </button>
           </form>
-          {startError && <p className="mt-3 text-[12px] text-rose-600">{startError}</p>}
+          <p className="mt-3 text-[11px] text-text-muted">{t('start.previewOpensInNewWindow')}</p>
         </div>
 
         {/* Carregar Projecte */}
@@ -133,10 +140,31 @@ export function StartScreen({ onNew, onLoad, draftSummary, onRestoreDraft, onDis
               <div className="text-center">
                 <p className="font-semibold text-text-main group-hover:text-accent">{t('start.uploadJson')}</p>
                 <p className="text-[11px] text-text-muted mt-1 uppercase tracking-wider font-mono">{t('start.formatLabel')}</p>
+                <p className="text-[11px] text-text-muted mt-3">{t('start.loadProjectHint')}</p>
               </div>
             </label>
           </div>
         </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="bg-white border border-border rounded-xl shadow-sm p-6">
+            <div className="text-[11px] font-bold uppercase tracking-widest text-text-muted mb-3">{t('start.howItWorks')}</div>
+            <div className="space-y-3 text-[13px] text-text-main">
+              <div><span className="font-semibold">1.</span> {t('start.howItWorksStep1')}</div>
+              <div><span className="font-semibold">2.</span> {t('start.howItWorksStep2')}</div>
+              <div><span className="font-semibold">3.</span> {t('start.howItWorksStep3')}</div>
+            </div>
+          </div>
+
+          <div className="bg-white border border-border rounded-xl shadow-sm p-6">
+            <div className="text-[11px] font-bold uppercase tracking-widest text-text-muted mb-3">{t('start.contractTitle')}</div>
+            <div className="space-y-2 text-[13px] text-text-main">
+              <div className="rounded-lg bg-slate-50 border border-border px-3 py-2 font-mono text-[12px]">data-editable-scope</div>
+              <div className="rounded-lg bg-slate-50 border border-border px-3 py-2 font-mono text-[12px]">data-editable</div>
+              <div className="text-text-muted leading-relaxed">{t('start.contractHint')}</div>
+            </div>
+          </div>
         </div>
       </motion.div>
     </div>

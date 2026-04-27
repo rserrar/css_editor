@@ -1,6 +1,6 @@
 
 import { Transport } from '../infrastructure/transport/Transport';
-import { ProtocolMessage, EditableStyleSet, StyleConfig } from '../domain/models';
+import { ProtocolMessage, ProjectInfo, StyleConfig } from '../domain/models';
 
 export class PreviewClient {
   constructor(private transport: Transport, private sessionId: string) {}
@@ -22,26 +22,10 @@ export class PreviewClient {
     this.transport.send(this.createMessage('preview:info:request'));
   }
 
-  notifyProjectLoad(project: any) {
+  notifyProjectLoad(project: ProjectInfo) {
     this.transport.send({
       ...this.createMessage('project:load'),
       project,
-    });
-  }
-
-  removeStyles(target: string, keys: string[]) {
-    this.transport.send({
-      ...this.createMessage('style:remove'),
-      target,
-      keys,
-    } as any);
-  }
-
-  updateStyle(target: string, styles: EditableStyleSet) {
-    this.transport.send({
-      ...this.createMessage('style:update'),
-      target,
-      styles,
     });
   }
 

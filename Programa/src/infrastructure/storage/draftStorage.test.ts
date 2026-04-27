@@ -7,7 +7,7 @@ describe('DraftStorage', () => {
     window.localStorage.clear();
   });
 
-  it('preserves legacy and scoped config keys when saving and loading drafts', () => {
+  it('preserves scoped stateful config keys when saving and loading drafts', () => {
     const project = {
       schemaVersion: 2,
       project: {
@@ -17,11 +17,11 @@ describe('DraftStorage', () => {
         updatedAt: '2026-04-18T10:00:00.000Z',
       },
       config: {
-        'menu.option': {
-          color: '#111111',
-        },
         'layout.mainMenu/menu.option': {
-          fontSize: '18px',
+          default: {
+            color: '#111111',
+            fontSize: '18px',
+          },
         },
       },
     };
@@ -30,11 +30,11 @@ describe('DraftStorage', () => {
     const draft = DraftStorage.load('session-1');
 
     expect(draft?.project.config).toEqual({
-      'menu.option': {
-        color: '#111111',
-      },
       'layout.mainMenu/menu.option': {
-        fontSize: '18px',
+        default: {
+          color: '#111111',
+          fontSize: '18px',
+        },
       },
     });
   });
@@ -49,7 +49,7 @@ describe('DraftStorage', () => {
         updatedAt: '2026-04-18T10:00:00.000Z',
       },
       config: {
-        'button.primary': {
+        'home.subscription/button.primary': {
           default: { color: '#111111' },
           hover: { color: '#222222' },
         },
@@ -60,10 +60,17 @@ describe('DraftStorage', () => {
     const draft = DraftStorage.load('session-2');
 
     expect(draft?.project.config).toEqual({
-      'button.primary': {
+      'home.subscription/button.primary': {
         default: { color: '#111111' },
         hover: { color: '#222222' },
       },
     });
+  });
+
+  it('clears invalid stored drafts instead of keeping broken data around', () => {
+    window.localStorage.setItem('live-style-editor:draft', '{');
+
+    expect(DraftStorage.load('session-1')).toBeNull();
+    expect(window.localStorage.getItem('live-style-editor:draft')).toBeNull();
   });
 });

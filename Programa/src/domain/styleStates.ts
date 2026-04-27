@@ -10,9 +10,6 @@ export const STYLE_STATE_IDS = [
   'disabled',
   'selected',
   'open',
-  'expanded',
-  'current',
-  'checked',
 ] as const;
 
 export type StyleStateId = (typeof STYLE_STATE_IDS)[number];
@@ -70,24 +67,6 @@ export const STYLE_STATE_DEFINITIONS: Record<StyleStateId, StyleStateDefinition>
     category: 'semantic',
     label: 'Open',
     domSignals: ['data-state="open"', 'aria-expanded="true"'],
-  },
-  expanded: {
-    id: 'expanded',
-    category: 'semantic',
-    label: 'Expanded',
-    domSignals: ['aria-expanded="true"'],
-  },
-  current: {
-    id: 'current',
-    category: 'semantic',
-    label: 'Current',
-    domSignals: ['aria-current'],
-  },
-  checked: {
-    id: 'checked',
-    category: 'semantic',
-    label: 'Checked',
-    domSignals: ['checked', 'aria-checked="true"', 'data-state="checked"'],
   },
 };
 

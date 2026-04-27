@@ -1,7 +1,7 @@
 /** @type {import('@playwright/test').PlaywrightTestConfig} */
 module.exports = {
-  testDir: '.',
-  testMatch: 'playwright*.spec.cjs',
+  testDir: './tests/e2e',
+  testMatch: '*.spec.ts',
   timeout: 30000,
   use: {
     headless: true,

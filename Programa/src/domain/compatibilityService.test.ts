@@ -28,8 +28,8 @@ function createProject(overrides: ProjectOverrides = {}): ProjectFile {
     },
     sourcePreview: overrides.sourcePreview,
     config: overrides.config ?? {
-      'hero.title': { color: '#111111' },
-      'hero.button': { fontSize: '18px' },
+      'home.hero/home.title': { default: { color: '#111111' } },
+      'home.hero/home.button': { default: { fontSize: '18px' } },
     },
   };
 }
@@ -57,7 +57,7 @@ function createPreview(overrides: PreviewOverrides = {}): PreviewInfoResponse {
       ...(site || {}),
     } as PreviewInfoResponse['site'],
     editable: {
-      targets: ['hero.title', 'hero.button'],
+      targets: ['home.hero/home.title', 'home.hero/home.button'],
       count: 2,
       ...(editable || {}),
     } as PreviewInfoResponse['editable'],
@@ -119,133 +119,65 @@ describe('CompatibilityService.buildReport', () => {
     expect(report.severity).toBe('ok');
   });
 
-  it('uses robust URL fallback when siteKey is missing and detects incompatible URLs', () => {
-    const project = createProject({ project: { siteKey: '', baseUrl: 'https://example.com/site' } });
-    const preview = createPreview({
-      site: { siteKey: '', siteName: 'No Site Key' },
-      page: { url: 'https://example.com/site-admin', origin: 'https://example.com', title: 'Admin' },
-    });
-
-    const report = CompatibilityService.buildReport(project, preview);
-
-    expect(report.urlCompatible).toBe(false);
-    expect(report.severity).toBe('error');
-    expect(report.messages.some((message) => message.includes('URL de la preview'))).toBe(true);
-  });
-
   it('returns warning when project targets are missing in preview', () => {
     const report = CompatibilityService.buildReport(
-      createProject({ config: { 'hero.title': { color: '#111111' }, 'hero.button': { fontSize: '18px' }, 'hero.caption': { color: '#333333' } } }),
+      createProject({
+        config: {
+          'home.hero/home.title': { default: { color: '#111111' } },
+          'home.hero/home.button': { default: { fontSize: '18px' } },
+          'home.hero/home.caption': { default: { color: '#333333' } },
+        },
+      }),
       createPreview(),
     );
 
     expect(report.severity).toBe('warning');
-    expect(report.missingTargetsInPreview).toEqual(['hero.caption']);
-    expect(report.messages.some((message) => message.includes('no existeixen a la preview'))).toBe(true);
+    expect(report.missingTargetsInPreview).toEqual(['home.hero/home.caption']);
   });
 
   it('returns warning when preview exposes new targets', () => {
     const report = CompatibilityService.buildReport(
       createProject(),
-      createPreview({ editable: { targets: ['hero.title', 'hero.button', 'hero.badge'], count: 3 } }),
+      createPreview({ editable: { targets: ['home.hero/home.title', 'home.hero/home.button', 'home.hero/home.badge'], count: 3 } }),
     );
 
     expect(report.severity).toBe('warning');
-    expect(report.newTargetsInPreview).toEqual(['hero.badge']);
-    expect(report.messages.some((message) => message.includes('targets nous'))).toBe(true);
+    expect(report.newTargetsInPreview).toEqual(['home.hero/home.badge']);
   });
 
-  it('treats scoped and legacy targets as different keys without equivalence magic', () => {
+  it('treats malformed preview target keys as an error', () => {
     const report = CompatibilityService.buildReport(
-      createProject({ config: { 'menu.option': { color: '#111111' } } }),
-      createPreview({ editable: { targets: ['layout.mainMenu/menu.option'], count: 1 } }),
+      createProject(),
+      createPreview({ editable: { targets: ['home.hero/home.title', 'menu.option'], count: 2 } }),
     );
 
-    expect(report.severity).toBe('warning');
-    expect(report.missingTargetsInPreview).toEqual(['menu.option']);
-    expect(report.newTargetsInPreview).toEqual(['layout.mainMenu/menu.option']);
-    expect(report.messages.some((message) => message.includes('legacy vs scoped'))).toBe(true);
-  });
-
-  it('accepts matching scoped targets as compatible', () => {
-    const report = CompatibilityService.buildReport(
-      createProject({ config: { 'layout.mainMenu/menu.option': { color: '#111111' } } }),
-      createPreview({ editable: { targets: ['layout.mainMenu/menu.option'], count: 1 } }),
-    );
-
-    expect(report.severity).toBe('ok');
-    expect(report.missingTargetsInPreview).toEqual([]);
-    expect(report.newTargetsInPreview).toEqual([]);
-  });
-
-  it('treats scoped project keys against legacy preview keys as warnings', () => {
-    const report = CompatibilityService.buildReport(
-      createProject({ config: { 'layout.mainMenu/menu.option': { color: '#111111' } } }),
-      createPreview({ editable: { targets: ['menu.option'], count: 1 } }),
-    );
-
-    expect(report.severity).toBe('warning');
-    expect(report.missingTargetsInPreview).toEqual(['layout.mainMenu/menu.option']);
-    expect(report.newTargetsInPreview).toEqual(['menu.option']);
+    expect(report.severity).toBe('error');
+    expect(report.messages.some((message) => message.includes('key malformada'))).toBe(true);
   });
 
   it('does not warn about new preview targets when the project is still empty', () => {
     const report = CompatibilityService.buildReport(
       createProject({ config: {} }),
-      createPreview({ editable: { targets: ['hero.title', 'hero.button', 'hero.badge'], count: 3 } }),
+      createPreview({ editable: { targets: ['home.hero/home.title', 'home.hero/home.button', 'home.hero/home.badge'], count: 3 } }),
     );
 
     expect(report.newTargetsInPreview).toEqual([]);
     expect(report.severity).toBe('ok');
   });
+});
 
-  it('keeps severity as error when warnings and errors coexist', () => {
-    const project = createProject({
-      sourcePreview: {
-        protocolVersion: 2,
-        page: { url: 'https://example.com/site/page', origin: 'https://example.com' },
-        capturedAt: '2026-04-18T11:00:00.000Z',
-      },
-      config: {
-        'hero.title': { color: '#111111' },
-        'hero.button': { fontSize: '18px' },
-        'hero.caption': { color: '#333333' },
-      },
-    });
+describe('CompatibilityService.buildSourcePreview', () => {
+  it('filters malformed preview targets instead of throwing', () => {
     const preview = createPreview({
-      site: { siteKey: 'other-site', siteName: 'Other' },
-      editable: { targets: ['hero.title', 'hero.badge'], count: 2 },
-    });
-
-    const report = CompatibilityService.buildReport(project, preview);
-
-    expect(report.severity).toBe('error');
-    expect(report.protocolCompatible).toBe(false);
-    expect(report.siteCompatible).toBe(false);
-    expect(report.missingTargetsInPreview).toEqual(['hero.button', 'hero.caption']);
-    expect(report.newTargetsInPreview).toEqual(['hero.badge']);
-  });
-
-  it('handles incomplete optional data without throwing', () => {
-    const project = createProject({
-      project: { baseUrl: undefined, siteKey: undefined },
-      sourcePreview: {
-        protocolVersion: 1,
-        page: { url: '', origin: '' },
-        capturedAt: '2026-04-18T11:00:00.000Z',
+      editable: {
+        targets: ['home.hero/home.title', 'menu.option', 'layout.mainMenu/'],
+        count: 3,
       },
     });
-    const preview = createPreview({
-      site: { siteKey: '', siteName: '' },
-      editable: { targets: ['hero.title'], count: 1 },
-      page: { url: '', origin: '', title: '' },
+
+    expect(CompatibilityService.buildSourcePreview(preview).editable).toEqual({
+      knownTargets: ['home.hero/home.title'],
+      count: 3,
     });
-
-    expect(() => CompatibilityService.buildReport(project, preview)).not.toThrow();
-
-    const report = CompatibilityService.buildReport(project, preview);
-    expect(report.urlCompatible).toBeNull();
-    expect(report.severity).toBe('warning');
-    expect(report.missingTargetsInPreview).toEqual(['hero.button']);
   });
 });

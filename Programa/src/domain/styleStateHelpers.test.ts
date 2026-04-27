@@ -1,26 +1,27 @@
 import { describe, expect, it } from 'vitest';
-import { canUseIncrementalDefaultMessages, copyStateFromDefault, getDefinedStates, getStateStyles, isEditableStyleSet, isStatefulStyle, normalizeToStateful, removeFromDefaultState, removeFromState, updateDefaultState, updateStateStyles } from './styleStateHelpers';
+import { copyStateFromDefault, createEmptyStatefulStyleSet, getDefinedStates, getStateStyles, isEditableStyleSet, isStatefulStyle, removeFromDefaultState, removeFromState, updateDefaultState, updateStateStyles } from './styleStateHelpers';
 
 describe('styleStateHelpers', () => {
-  it('detects legacy editable style sets', () => {
+  it('detects plain editable style sets', () => {
     expect(isEditableStyleSet({ color: '#fff', fontSize: '16px' })).toBe(true);
     expect(isEditableStyleSet({ default: { color: '#fff' } })).toBe(false);
   });
 
   it('detects valid stateful styles', () => {
     expect(isStatefulStyle({ default: { color: '#fff' }, hover: { color: '#000' } })).toBe(true);
-    expect(isStatefulStyle({ selected: { color: '#fff' } })).toBe(true);
-    expect(isStatefulStyle({ open: { color: '#fff' } })).toBe(true);
+    expect(isStatefulStyle({ selected: { color: '#fff' } })).toBe(false);
+    expect(isStatefulStyle({ open: { color: '#fff' } })).toBe(false);
+    expect(isStatefulStyle({ hover: { color: '#000' } })).toBe(false);
     expect(isStatefulStyle({ color: '#fff', hover: { color: '#000' } })).toBe(false);
   });
 
-  it('normalizes legacy values to default state', () => {
-    expect(normalizeToStateful({ color: '#fff' })).toEqual({ default: { color: '#fff' } });
+  it('creates an empty stateful style set with default state', () => {
+    expect(createEmptyStatefulStyleSet()).toEqual({ default: {} });
   });
 
   it('returns state styles with empty fallback', () => {
     expect(getStateStyles({ default: { color: '#fff' }, hover: { color: '#000' } }, 'hover')).toEqual({ color: '#000' });
-    expect(getStateStyles({ color: '#fff' }, 'hover')).toEqual({});
+    expect(getStateStyles(undefined, 'hover')).toEqual({});
   });
 
   it('lists only defined runtime states', () => {
@@ -41,22 +42,22 @@ describe('styleStateHelpers', () => {
   });
 
   it('updates and removes a non-default state without mutating default', () => {
-    const legacy = { color: '#fff' };
-    expect(updateStateStyles(legacy, 'hover', { color: '#f00' })).toEqual({
+    const stateful = { default: { color: '#fff' } };
+    expect(updateStateStyles(stateful, 'hover', { color: '#f00' })).toEqual({
       default: { color: '#fff' },
       hover: { color: '#f00' },
     });
-    expect(updateStateStyles(legacy, 'selected', { fontWeight: '700' })).toEqual({
+    expect(updateStateStyles(stateful, 'selected', { fontWeight: '700' })).toEqual({
       default: { color: '#fff' },
       selected: { fontWeight: '700' },
     });
-    expect(updateStateStyles(legacy, 'open', { color: '#0af' })).toEqual({
+    expect(updateStateStyles(stateful, 'open', { color: '#0af' })).toEqual({
       default: { color: '#fff' },
       open: { color: '#0af' },
     });
 
-    const stateful = { default: { color: '#fff' }, hover: { color: '#f00', fontSize: '18px' } };
-    expect(removeFromState(stateful, 'hover', ['color'])).toEqual({
+    const statefulWithHover = { default: { color: '#fff' }, hover: { color: '#f00', fontSize: '18px' } };
+    expect(removeFromState(statefulWithHover, 'hover', ['color'])).toEqual({
       default: { color: '#fff' },
       hover: { fontSize: '18px' },
     });
@@ -69,14 +70,8 @@ describe('styleStateHelpers', () => {
     });
   });
 
-  it('knows when incremental default protocol messages remain safe to use', () => {
-    expect(canUseIncrementalDefaultMessages({ color: '#fff' }, 'default')).toBe(true);
-    expect(canUseIncrementalDefaultMessages({ default: { color: '#fff' } }, 'default')).toBe(false);
-    expect(canUseIncrementalDefaultMessages({ color: '#fff' }, 'hover')).toBe(false);
-  });
-
   it('copies default state into a non-default destination and overwrites it', () => {
-    expect(copyStateFromDefault({ color: '#000' }, 'hover')).toEqual({
+    expect(copyStateFromDefault({ default: { color: '#000' } }, 'hover')).toEqual({
       default: { color: '#000' },
       hover: { color: '#000' },
     });

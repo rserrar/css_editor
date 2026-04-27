@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Layers3, Dot, Search, X } from 'lucide-react';
 import { useTranslation } from '../../infrastructure/i18n/I18nContext';
-import { parseCanonicalKey } from '../../domain/targetKey';
+import { tryParseCanonicalKey } from '../../domain/targetKey';
 
 interface Props {
   targets: string[];
@@ -9,7 +9,7 @@ interface Props {
   styledTargets: Set<string>;
   statefulTargets: Set<string>;
   onHover: (target: string | null) => void;
-  onSelect: (target: string) => void;
+  onSelect: (target: string | null) => void;
   emptyMessage: string;
   title: string;
 }
@@ -17,21 +17,20 @@ interface Props {
 type TargetGroup = {
   key: string;
   label: string;
-  kind: 'scoped' | 'legacy';
-  items: Array<{ full: string; target: string; scope: string | null; hasScope: boolean }>;
+  items: Array<{ full: string; target: string; scope: string }>;
 };
 
 function buildGroups(targets: string[]): TargetGroup[] {
   const groups = new Map<string, TargetGroup>();
 
   [...targets].sort((a, b) => a.localeCompare(b)).forEach((target) => {
-    const parsed = parseCanonicalKey(target);
-    const groupKey = parsed.scope || '__legacy__';
+    const parsed = tryParseCanonicalKey(target);
+    if (!parsed) return;
+    const groupKey = parsed.scope;
     if (!groups.has(groupKey)) {
       groups.set(groupKey, {
         key: groupKey,
-        label: parsed.scope || 'legacy',
-        kind: parsed.scope ? 'scoped' : 'legacy',
+        label: parsed.scope,
         items: [],
       });
     }
@@ -40,37 +39,69 @@ function buildGroups(targets: string[]): TargetGroup[] {
       full: parsed.canonicalKey,
       target: parsed.target,
       scope: parsed.scope,
-      hasScope: parsed.hasScope,
     });
   });
 
-  return Array.from(groups.values()).sort((a, b) => {
-    if (a.kind !== b.kind) return a.kind === 'scoped' ? -1 : 1;
-    return a.label.localeCompare(b.label);
-  });
+  return Array.from(groups.values()).sort((a, b) => a.label.localeCompare(b.label));
 }
 
 export function TargetNavigator({ targets, selectedTarget, styledTargets, statefulTargets, onHover, onSelect, emptyMessage, title }: Props) {
   const { t } = useTranslation();
   const [query, setQuery] = useState('');
+  const selectedTargetParts = selectedTarget ? tryParseCanonicalKey(selectedTarget) : null;
 
   const filteredTargets = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
     if (!normalizedQuery) return targets;
 
     return targets.filter((target) => {
-      const parsed = parseCanonicalKey(target);
-      return [parsed.canonicalKey, parsed.scope || '', parsed.target].some((value) => value.toLowerCase().includes(normalizedQuery));
+      const parsed = tryParseCanonicalKey(target);
+      if (!parsed) return false;
+      return [parsed.canonicalKey, parsed.scope, parsed.target].some((value) => value.toLowerCase().includes(normalizedQuery));
     });
   }, [targets, query]);
 
   const groups = buildGroups(filteredTargets);
   const hasFilter = query.trim().length > 0;
   const emptyStateMessage = hasFilter ? t('editor.noFilteredTargets') : emptyMessage;
+  const visibleCount = filteredTargets.length;
 
   return (
     <div className="p-4 flex-1 flex flex-col overflow-hidden">
-      <div className="text-[11px] font-bold text-text-muted uppercase tracking-widest mb-3">{title} ({targets.length})</div>
+      <div className="mb-3 space-y-3">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <div className="text-[11px] font-bold text-text-muted uppercase tracking-widest">{title}</div>
+            <div className="mt-1 text-[12px] text-text-muted">
+              {targets.length} {t('editor.totalTargets')} - {visibleCount} {t('editor.visibleTargets')}
+            </div>
+          </div>
+
+          {selectedTarget && (
+            <button
+              type="button"
+              onClick={() => onSelect(null)}
+              className="shrink-0 rounded-md border border-border bg-white px-2 py-1 text-[11px] font-semibold text-text-muted hover:text-text-main hover:bg-slate-50"
+            >
+              {t('editor.clearSelection')}
+            </button>
+          )}
+        </div>
+
+        <div className="flex flex-wrap gap-2 text-[11px]">
+          <span className="rounded-full border border-border bg-slate-50 px-2 py-1 text-text-muted">
+            {styledTargets.size} {t('editor.styledTargetsCount')}
+          </span>
+          <span className="rounded-full border border-border bg-slate-50 px-2 py-1 text-text-muted">
+            {statefulTargets.size} {t('editor.statefulTargetsCount')}
+          </span>
+          {selectedTargetParts && (
+            <span className="rounded-full border border-blue-200 bg-blue-50 px-2 py-1 text-accent font-medium truncate max-w-full">
+              {selectedTargetParts.target}
+            </span>
+          )}
+        </div>
+      </div>
 
       <div className="relative mb-3">
         <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
@@ -103,7 +134,7 @@ export function TargetNavigator({ targets, selectedTarget, styledTargets, statef
             <div key={group.key} className="space-y-1.5">
               <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-text-muted">
                 <Layers3 size={12} />
-                <span>{group.kind === 'scoped' ? group.label : t('editor.noScopeGroup')}</span>
+                <span>{group.label}</span>
               </div>
 
               <div className="space-y-0.5">
@@ -127,17 +158,10 @@ export function TargetNavigator({ targets, selectedTarget, styledTargets, statef
                           ? 'bg-blue-50 text-accent border border-blue-200'
                           : 'text-text-main hover:bg-slate-100 border border-transparent'
                       }`}
-                    >
+                      >
                       <div className="min-w-0">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <div className="text-[13px] font-medium truncate">{item.target}</div>
-                          <span className={`text-[9px] px-1.5 py-0.5 rounded uppercase tracking-widest font-bold ${item.hasScope ? 'bg-blue-50 text-blue-700' : 'bg-slate-100 text-slate-600'}`}>
-                            {item.hasScope ? t('editor.scopedKey') : t('editor.legacyKey')}
-                          </span>
-                        </div>
-                        {item.scope ? (
-                          <div className="text-[10px] opacity-70 truncate block">{item.scope}</div>
-                        ) : null}
+                        <div className="text-[13px] font-medium truncate">{item.target}</div>
+                        <div className="text-[10px] opacity-70 truncate block">{item.scope}</div>
                         <code className="text-[10px] opacity-60 font-mono truncate block">{item.full}</code>
                       </div>
 

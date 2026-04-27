@@ -41,7 +41,6 @@ function AppContent() {
     setSelectedStyleState,
     selectTarget,
     hoverTarget,
-    getEditableStyles,
     getEditableStylesForState,
     getDefinedStatesForTarget,
     createProject,
@@ -60,7 +59,7 @@ function AppContent() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${exportableProject.project.siteKey || 'projecte'}-${new Date().toISOString().split('T')[0]}.json`;
+    a.download = ProjectService.buildExportFilename(exportableProject);
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -71,10 +70,10 @@ function AppContent() {
     return url.toString();
   };
 
-  const openPreview = (baseUrl: string, previewWindow?: Window | null) => {
-    try {
-      const previewUrl = buildPreviewUrl(baseUrl);
-      const previewOrigin = new URL(previewUrl).origin;
+   const openPreview = (baseUrl: string, previewWindow?: Window | null) => {
+     try {
+       const previewUrl = buildPreviewUrl(baseUrl);
+       const previewOrigin = new URL(previewUrl).origin;
 
       if (previewWindowRef.current && !previewWindowRef.current.closed && previewWindowRef.current !== previewWindow) {
         previewWindowRef.current.close();
@@ -90,7 +89,7 @@ function AppContent() {
         const openedWindow = window.open(previewUrl, `live-style-preview-${sessionId}`);
         if (!openedWindow) {
           setStartError(t('start.popupBlocked'));
-          return;
+          return false;
         }
         openedWindow.focus();
         previewWindowRef.current = openedWindow;
@@ -99,6 +98,7 @@ function AppContent() {
       previewOriginRef.current = previewOrigin;
 
       setStartError(null);
+      return true;
     } catch {
       if (previewWindow) {
         previewWindow.close();
@@ -106,32 +106,37 @@ function AppContent() {
       previewWindowRef.current = null;
       previewOriginRef.current = null;
       setStartError(t('start.invalidPreviewUrl'));
+      return false;
     }
   };
 
   const handleCreateProject = (url: string) => {
+    if (!openPreview(url)) return;
     createProject(url);
-    openPreview(url);
   };
 
   const handleLoadFile = (file: File, previewWindow: Window | null) => {
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
-        const json = JSON.parse(e.target?.result as string);
-        const validated = ProjectService.validateProjectFile(json);
-        loadProject(validated);
+        const validated = ProjectService.parseProjectFileJson(e.target?.result as string);
+        if (validated.project.baseUrl && !openPreview(validated.project.baseUrl, previewWindow)) {
+          return;
+        }
 
-        if (validated.project.baseUrl) {
-          openPreview(validated.project.baseUrl, previewWindow);
-        } else if (previewWindow) {
+        if (!validated.project.baseUrl && previewWindow) {
           previewWindow.close();
         }
+
+        loadProject(validated);
+        setStartError(null);
       } catch (err) {
         if (previewWindow) {
           previewWindow.close();
         }
-        alert(t('errors.invalidJson'));
+        previewWindowRef.current = null;
+        previewOriginRef.current = null;
+        setStartError(err instanceof Error ? err.message : t('errors.invalidJson'));
       }
     };
     reader.readAsText(file);
@@ -164,7 +169,6 @@ function AppContent() {
       onUpdateStyle={updateStyle}
       onRemoveStyle={removeStyle}
       onCopyStateFromDefault={copyStateFromDefault}
-      getEditableStyles={getEditableStyles}
       getEditableStylesForState={getEditableStylesForState}
       getDefinedStatesForTarget={getDefinedStatesForTarget}
       onExport={handleExport}

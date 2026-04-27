@@ -1,5 +1,5 @@
 import { CompatibilityReport, PreviewInfoResponse, ProjectFile, SourcePreview } from './models';
-import { hasScopedTargetKey } from './targetKey';
+import { parseCanonicalKey, tryParseCanonicalKey } from './targetKey';
 
 const CURRENT_PROTOCOL_VERSION = 1;
 
@@ -30,6 +30,21 @@ function areUrlsCompatible(projectUrl: string, previewUrl: string): boolean | nu
   return previewPath === projectPath || previewPath.startsWith(`${projectPath}/`);
 }
 
+function splitValidAndMalformedTargets(targets: string[]) {
+  const validTargets: string[] = [];
+  const malformedTargets: string[] = [];
+
+  targets.forEach((target) => {
+    try {
+      validTargets.push(parseCanonicalKey(target).canonicalKey);
+    } catch {
+      malformedTargets.push(target);
+    }
+  });
+
+  return { validTargets, malformedTargets };
+}
+
 export const CompatibilityService = {
   currentProtocolVersion: CURRENT_PROTOCOL_VERSION,
 
@@ -48,7 +63,9 @@ export const CompatibilityService = {
         environment: preview.site.environment,
       },
       editable: {
-        knownTargets: preview.editable.targets,
+        knownTargets: preview.editable.targets
+          .map((target) => tryParseCanonicalKey(target)?.canonicalKey)
+          .filter((target): target is string => Boolean(target)),
         count: preview.editable.count,
       },
       capturedAt: new Date().toISOString(),
@@ -71,14 +88,16 @@ export const CompatibilityService = {
 
     const projectTargets = Object.keys(project.config);
     const previewTargets = preview.editable.targets;
+    const projectTargetValidation = splitValidAndMalformedTargets(projectTargets);
+    const previewTargetValidation = splitValidAndMalformedTargets(previewTargets);
+    const validProjectTargets = projectTargetValidation.validTargets;
+    const validPreviewTargets = previewTargetValidation.validTargets;
     const previewTargetSet = new Set(previewTargets);
-    const projectTargetSet = new Set(projectTargets);
-    const isEmptyProject = projectTargets.length === 0;
-    const projectHasScopedTargets = projectTargets.some((target) => hasScopedTargetKey(target));
-    const previewHasScopedTargets = previewTargets.some((target) => hasScopedTargetKey(target));
+    const projectTargetSet = new Set(validProjectTargets);
+    const isEmptyProject = validProjectTargets.length === 0;
 
-    const missingTargetsInPreview = projectTargets.filter((target) => !previewTargetSet.has(target));
-    const newTargetsInPreview = isEmptyProject ? [] : previewTargets.filter((target) => !projectTargetSet.has(target));
+    const missingTargetsInPreview = validProjectTargets.filter((target) => !new Set(validPreviewTargets).has(target));
+    const newTargetsInPreview = isEmptyProject ? [] : validPreviewTargets.filter((target) => !projectTargetSet.has(target));
 
     const messages: string[] = [];
     if (!protocolCompatible) {
@@ -96,11 +115,14 @@ export const CompatibilityService = {
     if (newTargetsInPreview.length > 0) {
       messages.push(`${newTargetsInPreview.length} targets nous existeixen a la preview i encara no al projecte.`);
     }
-    if (projectTargets.length > 0 && previewTargets.length > 0 && projectHasScopedTargets !== previewHasScopedTargets) {
-      messages.push('El projecte i la preview fan servir formats de target diferents (legacy vs scoped). No es consideren equivalents automàticament.');
+    if (projectTargetValidation.malformedTargets.length > 0) {
+      messages.push(`${projectTargetValidation.malformedTargets.length} targets del projecte tenen una key malformada.`);
+    }
+    if (previewTargetValidation.malformedTargets.length > 0) {
+      messages.push(`${previewTargetValidation.malformedTargets.length} targets de la preview tenen una key malformada.`);
     }
 
-    const severity = !protocolCompatible || !siteCompatible || urlCompatible === false
+    const severity = !protocolCompatible || !siteCompatible || urlCompatible === false || projectTargetValidation.malformedTargets.length > 0 || previewTargetValidation.malformedTargets.length > 0
       ? 'error'
       : missingTargetsInPreview.length > 0 || newTargetsInPreview.length > 0
         ? 'warning'

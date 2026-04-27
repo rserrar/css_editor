@@ -13,9 +13,9 @@ function renderPanel(props = {}) {
   render(
     <I18nProvider>
       <StylePanel
-        target="button.primary"
+        target="home.subscription/button.primary"
         styles={{ color: '#000000' }}
-        configValue={{ color: '#000000' }}
+        configValue={{ default: { color: '#000000' } }}
         selectedStyleState="default"
         availableStates={['default']}
         onStyleStateSelect={onStyleStateSelect}
@@ -58,10 +58,23 @@ describe('StylePanel state selector', () => {
   it('organizes properties into clearer groups', () => {
     renderPanel();
 
+    expect(screen.getByText('Propietats habituals')).toBeTruthy();
     expect(screen.getByText('Text i tipografia')).toBeTruthy();
     expect(screen.getByText('Espaiat')).toBeTruthy();
     expect(screen.getByText('Superfície i vores')).toBeTruthy();
     expect(screen.getByText('Imatge i fons')).toBeTruthy();
+  });
+
+  it('shows a non-invasive summary of explicitly defined properties only', () => {
+    renderPanel({
+      styles: { color: '#000000', fontSize: '16px' },
+      configValue: { default: { color: '#000000', fontSize: '16px' } },
+    });
+
+    expect(screen.getByText('Resum del que edites en aquest estat')).toBeTruthy();
+    expect(screen.getAllByText('color').length).toBeGreaterThan(0);
+    expect(screen.getByText('fontSize')).toBeTruthy();
+    expect(screen.getByText(/No reflecteix estils heretats/)).toBeTruthy();
   });
 
   it('adds contextual help to selected and open states', () => {
@@ -71,9 +84,9 @@ describe('StylePanel state selector', () => {
     expect(getStateButton('open').getAttribute('title')).toContain('Element obert');
   });
 
-  it('shows legacy targets with default defined and the rest empty', () => {
+  it('shows default as defined and the rest empty when only base styles exist', () => {
     renderPanel({
-      configValue: { color: '#000000' },
+      configValue: { default: { color: '#000000' } },
       availableStates: ['default'],
       selectedStyleState: 'default',
     });
@@ -135,7 +148,7 @@ describe('StylePanel state selector', () => {
   it('allows editing an empty non-default state without crashing', () => {
     const { onChange } = renderPanel({
       styles: {},
-      configValue: { color: '#000000' },
+      configValue: { default: { color: '#000000' } },
       selectedStyleState: 'hover',
       availableStates: ['default'],
     });
@@ -147,7 +160,7 @@ describe('StylePanel state selector', () => {
   it('calls copy from default for the selected non-default state', () => {
     const { onCopyStateFromDefault } = renderPanel({
       selectedStyleState: 'selected',
-      configValue: { color: '#000000' },
+      configValue: { default: { color: '#000000' } },
       availableStates: ['default'],
     });
 

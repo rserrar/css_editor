@@ -73,36 +73,29 @@
   };
 
   const buildCanonicalKey = (scope, target) => {
-    const normalizedTarget = normalizePart(target);
-    if (!normalizedTarget) return null;
-
     const normalizedScope = normalizePart(scope);
-    return normalizedScope ? `${normalizedScope}/${normalizedTarget}` : normalizedTarget;
+    const normalizedTarget = normalizePart(target);
+    if (!normalizedScope || !normalizedTarget) return null;
+    if (normalizedScope.includes('/') || normalizedTarget.includes('/')) return null;
+
+    return `${normalizedScope}/${normalizedTarget}`;
   };
 
   const parseCanonicalKey = (key) => {
     const normalizedKey = normalizePart(key);
     if (!normalizedKey) return null;
 
-    const separatorIndex = normalizedKey.indexOf('/');
-    if (separatorIndex === -1) {
-      return {
-        scope: null,
-        target: normalizedKey,
-        canonicalKey: normalizedKey,
-        hasScope: false
-      };
-    }
+    const parts = normalizedKey.split('/');
+    if (parts.length !== 2) return null;
 
-    const scope = normalizePart(normalizedKey.slice(0, separatorIndex));
-    const target = normalizePart(normalizedKey.slice(separatorIndex + 1));
+    const scope = normalizePart(parts[0]);
+    const target = normalizePart(parts[1]);
     if (!scope || !target) return null;
 
     return {
       scope,
       target,
-      canonicalKey: `${scope}/${target}`,
-      hasScope: true
+      canonicalKey: `${scope}/${target}`
     };
   };
 
@@ -110,13 +103,9 @@
     const parsed = parseCanonicalKey(key);
     if (!parsed) return null;
 
-    const escapedTarget = CSS.escape(parsed.target);
-    if (!parsed.hasScope) {
-      return `[data-editable="${escapedTarget}"]`;
-    }
-
     const escapedScope = CSS.escape(parsed.scope);
-    return `[data-editable-scope="${escapedScope}"] [data-editable="${escapedTarget}"], [data-editable-scope="${escapedScope}"][data-editable="${escapedTarget}"]`;
+    const escapedTarget = CSS.escape(parsed.target);
+    return `[data-editable-scope="${escapedScope}"][data-editable="${escapedTarget}"]`;
   };
 
   const selectorForState = (key, state) => {
@@ -140,58 +129,30 @@
       .join(', ');
   };
 
-  const isPlainStyleSet = (value) => {
-    if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
-    return Object.keys(value).every((key) => !RUNTIME_STATES.includes(key));
-  };
-
   const isStatefulStyleSet = (value) => {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
     const keys = Object.keys(value);
-    if (keys.length === 0) return false;
-    return keys.every((key) => RUNTIME_STATES.includes(key));
+    if (keys.length === 0 || !keys.includes('default')) return false;
+    return keys.every((key) => RUNTIME_STATES.includes(key) && value[key] && typeof value[key] === 'object' && !Array.isArray(value[key]));
   };
+
+  const createEmptyStatefulStyleSet = () => ({
+    default: {}
+  });
 
   const normalizeStatefulEntry = (value) => {
-    if (isStatefulStyleSet(value)) {
-      return { ...value };
-    }
-    if (isPlainStyleSet(value)) {
-      return { default: { ...value } };
-    }
-    return {};
-  };
-
-  const mergeDefaultState = (value, styles) => {
-    if (isStatefulStyleSet(value)) {
-      return {
-        ...value,
-        default: {
-          ...(value.default || {}),
-          ...styles,
-        },
-      };
+    if (!isStatefulStyleSet(value)) {
+      return createEmptyStatefulStyleSet();
     }
 
-    return {
-      ...(isPlainStyleSet(value) ? value : {}),
-      ...styles,
-    };
-  };
+    const normalized = createEmptyStatefulStyleSet();
+    RUNTIME_STATES.forEach((state) => {
+      if (value[state] && typeof value[state] === 'object' && !Array.isArray(value[state])) {
+        normalized[state] = { ...value[state] };
+      }
+    });
 
-  const removeDefaultStateKeys = (value, keys) => {
-    if (isStatefulStyleSet(value)) {
-      const nextDefault = { ...(value.default || {}) };
-      keys.forEach((key) => delete nextDefault[key]);
-      return {
-        ...value,
-        default: nextDefault,
-      };
-    }
-
-    const next = { ...(isPlainStyleSet(value) ? value : {}) };
-    keys.forEach((key) => delete next[key]);
-    return next;
+    return normalized;
   };
 
   const getElementKey = (element) => {
@@ -199,13 +160,36 @@
     if (!target) return null;
     const scope = normalizePart(element.getAttribute('data-editable-scope'));
 
-    if (scope) {
-      return buildCanonicalKey(scope, target);
+    if (!scope) {
+      warnLog('Ignored data-editable element without required data-editable-scope', element);
+      return null;
     }
 
-    const scopedParent = element.closest('[data-editable-scope]');
-    const inheritedScope = scopedParent ? normalizePart(scopedParent.getAttribute('data-editable-scope')) : '';
-    return buildCanonicalKey(inheritedScope, target);
+    const key = buildCanonicalKey(scope, target);
+    if (!key) {
+      warnLog('Ignored malformed editable target key', { scope, target });
+    }
+    return key;
+  };
+
+  const normalizeConfig = (config) => {
+    if (!config || typeof config !== 'object' || Array.isArray(config)) return {};
+
+    const normalized = {};
+    Object.entries(config).forEach(([target, styles]) => {
+      if (!parseCanonicalKey(target)) {
+        warnLog('Ignored malformed config target key', target);
+        return;
+      }
+      if (!isStatefulStyleSet(styles)) {
+        warnLog('Ignored non-stateful config target', target);
+        return;
+      }
+
+      normalized[target] = normalizeStatefulEntry(styles);
+    });
+
+    return normalized;
   };
 
   const applyStyles = () => {
@@ -242,15 +226,14 @@
         continue;
       }
 
-      if (isStatefulStyleSet(styles)) {
-        const hasAnyStyles = RUNTIME_STATES.some((state) => {
-          const stateStyles = styles[state];
-          return stateStyles && Object.keys(stateStyles).length > 0;
-        });
+      const normalized = normalizeStatefulEntry(styles);
+      const hasAnyStyles = RUNTIME_STATES.some((state) => {
+        const stateStyles = normalized[state];
+        return stateStyles && Object.keys(stateStyles).length > 0;
+      });
 
-        if (!hasAnyStyles) {
-          delete styleConfig[target];
-        }
+      if (!hasAnyStyles) {
+        delete styleConfig[target];
       }
     }
   };
@@ -324,24 +307,9 @@
         break;
 
       case 'config:replaceAll':
-        styleConfig = msg.config && typeof msg.config === 'object' ? { ...msg.config } : {};
+        styleConfig = normalizeConfig(msg.config);
         removeEmptyTargets();
         applyStyles();
-        break;
-
-      case 'style:update':
-        styleConfig[msg.target] = mergeDefaultState(styleConfig[msg.target], msg.styles);
-        applyStyles();
-        break;
-
-      case 'style:remove':
-        if (styleConfig[msg.target]) {
-          styleConfig[msg.target] = removeDefaultStateKeys(styleConfig[msg.target], msg.keys);
-          if (!styleConfig[msg.target] || Object.keys(styleConfig[msg.target]).length === 0) {
-            delete styleConfig[msg.target];
-          }
-          applyStyles();
-        }
         break;
 
       case 'hello':

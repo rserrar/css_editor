@@ -1,22 +1,28 @@
 export interface ParsedTargetKey {
-  scope: string | null;
+  scope: string;
   target: string;
   canonicalKey: string;
-  hasScope: boolean;
 }
 
 function normalizePart(value: string | null | undefined): string {
   return typeof value === 'string' ? value.trim() : '';
 }
 
-export function buildCanonicalKey(scope: string | null | undefined, target: string): string {
+export function buildCanonicalKey(scope: string, target: string): string {
+  const normalizedScope = normalizePart(scope);
   const normalizedTarget = normalizePart(target);
+  if (!normalizedScope) {
+    throw new Error('Target key requires a non-empty scope');
+  }
   if (!normalizedTarget) {
     throw new Error('Target key requires a non-empty target');
   }
 
-  const normalizedScope = normalizePart(scope);
-  return normalizedScope ? `${normalizedScope}/${normalizedTarget}` : normalizedTarget;
+  if (normalizedScope.includes('/') || normalizedTarget.includes('/')) {
+    throw new Error('Canonical target key must use exactly one scope/target separator');
+  }
+
+  return `${normalizedScope}/${normalizedTarget}`;
 }
 
 export function parseCanonicalKey(key: string): ParsedTargetKey {
@@ -25,18 +31,13 @@ export function parseCanonicalKey(key: string): ParsedTargetKey {
     throw new Error('Target key requires a non-empty key');
   }
 
-  const separatorIndex = normalizedKey.indexOf('/');
-  if (separatorIndex === -1) {
-    return {
-      scope: null,
-      target: normalizedKey,
-      canonicalKey: normalizedKey,
-      hasScope: false,
-    };
+  const parts = normalizedKey.split('/');
+  if (parts.length !== 2) {
+    throw new Error('Canonical target key must use exactly one scope/target separator');
   }
 
-  const scope = normalizePart(normalizedKey.slice(0, separatorIndex));
-  const target = normalizePart(normalizedKey.slice(separatorIndex + 1));
+  const scope = normalizePart(parts[0]);
+  const target = normalizePart(parts[1]);
   if (!scope || !target) {
     throw new Error('Canonical target key must contain both scope and target');
   }
@@ -45,22 +46,25 @@ export function parseCanonicalKey(key: string): ParsedTargetKey {
     scope,
     target,
     canonicalKey: `${scope}/${target}`,
-    hasScope: true,
   };
+}
+
+export function tryParseCanonicalKey(key: string): ParsedTargetKey | null {
+  try {
+    return parseCanonicalKey(key);
+  } catch {
+    return null;
+  }
 }
 
 export function getTargetFromKey(key: string): string {
   return parseCanonicalKey(key).target;
 }
 
-export function getScopeFromKey(key: string): string | null {
+export function getScopeFromKey(key: string): string {
   return parseCanonicalKey(key).scope;
 }
 
-export function hasScopedTargetKey(key: string): boolean {
-  return parseCanonicalKey(key).hasScope;
-}
-
-export function matchesTargetKey(input: string, scope: string | null | undefined, target: string): boolean {
+export function matchesTargetKey(input: string, scope: string, target: string): boolean {
   return buildCanonicalKey(scope, target) === parseCanonicalKey(input).canonicalKey;
 }

@@ -11,7 +11,12 @@ function renderNavigator(props = {}) {
   render(
     <I18nProvider>
       <TargetNavigator
-        targets={['menu.option', 'layout.mainMenu/menu.option', 'layout.mainMenu/menu.subOption', 'layout.footerMenu/menu.option']}
+        targets={[
+          'home.hero/home.title',
+          'layout.mainMenu/menu.option',
+          'layout.mainMenu/menu.subOption',
+          'layout.footerMenu/menu.option',
+        ]}
         selectedTarget={null}
         styledTargets={new Set(['layout.mainMenu/menu.option'])}
         statefulTargets={new Set(['layout.mainMenu/menu.option'])}
@@ -32,13 +37,14 @@ afterEach(() => {
 });
 
 describe('TargetNavigator', () => {
-  it('groups scoped keys by scope and legacy keys under no-scope group', () => {
+  it('groups targets by scope and never renders a no-scope group', () => {
     renderNavigator();
 
     expect(screen.getAllByText('layout.mainMenu').length).toBeGreaterThan(0);
     expect(screen.getAllByText('layout.footerMenu').length).toBeGreaterThan(0);
-    expect(screen.getByText('Sense scope')).toBeTruthy();
-    expect(screen.getAllByText('menu.option').length).toBeGreaterThanOrEqual(3);
+    expect(screen.getAllByText('home.hero').length).toBeGreaterThan(0);
+    expect(screen.queryByText('Sense scope')).toBeNull();
+    expect(screen.getAllByText('menu.option').length).toBeGreaterThanOrEqual(2);
     expect(screen.getByText('menu.subOption')).toBeTruthy();
   });
 
@@ -51,7 +57,6 @@ describe('TargetNavigator', () => {
 
     fireEvent.change(screen.getByPlaceholderText('Filtrar targets...'), { target: { value: 'menu.subOption' } });
     expect(screen.getByText('menu.subOption')).toBeTruthy();
-    expect(screen.queryByText('Sense scope')).toBeNull();
 
     fireEvent.change(screen.getByPlaceholderText('Filtrar targets...'), { target: { value: 'layout.footerMenu/menu.option' } });
     expect(screen.getAllByText('layout.footerMenu').length).toBeGreaterThan(0);
@@ -89,6 +94,14 @@ describe('TargetNavigator', () => {
     expect(within(styledButton).getByLabelText('Amb estils')).toBeTruthy();
   });
 
+  it('ignores malformed target keys instead of crashing the navigator', () => {
+    renderNavigator({ targets: ['home.hero/home.title', 'menu.option', 'layout.mainMenu/menu.option'] });
+
+    expect(screen.getAllByText('home.hero').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('layout.mainMenu').length).toBeGreaterThan(0);
+    expect(screen.queryByText('menu.option', { selector: 'code' })).toBeNull();
+  });
+
   it('shows a state variants indicator for targets with non-default variants', () => {
     renderNavigator();
 
@@ -99,22 +112,12 @@ describe('TargetNavigator', () => {
   it('does not show a state variants indicator for targets without non-default variants', () => {
     renderNavigator();
 
-    const legacyButton = screen.getByRole('button', { name: /^menu\.option legacy menu\.option$/i });
-    expect(within(legacyButton).queryByLabelText('Té variants d\'estat')).toBeNull();
-  });
-
-  it('shows mixed legacy and scoped entries without collapsing them visually', () => {
-    renderNavigator();
-
-    expect(screen.getByText('layout.mainMenu/menu.option')).toBeTruthy();
-    expect(screen.getByText('layout.footerMenu/menu.option')).toBeTruthy();
-    expect(screen.getAllByText('legacy').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('scoped').length).toBeGreaterThan(0);
-    expect(screen.getByText('Sense scope')).toBeTruthy();
+    const heroButton = screen.getByRole('button', { name: /home\.hero\/home\.title/i });
+    expect(within(heroButton).queryByLabelText('Té variants d\'estat')).toBeNull();
   });
 
   it('shows global empty state without targets', () => {
-    renderNavigator({ targets: [], styledTargets: new Set() });
+    renderNavigator({ targets: [], styledTargets: new Set(), statefulTargets: new Set() });
 
     expect(screen.getByText('No targets')).toBeTruthy();
   });

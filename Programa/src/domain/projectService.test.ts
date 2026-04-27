@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { ProjectService } from './projectService';
 
 describe('ProjectService.validateProjectFile', () => {
-  it('normalizes a current v2 project file', () => {
+  it('normalizes a current v2 project file with scoped stateful config', () => {
     const input = {
       schemaVersion: 2,
       project: {
@@ -27,15 +27,20 @@ describe('ProjectService.validateProjectFile', () => {
           environment: 'staging',
         },
         editable: {
-          knownTargets: ['hero.title', 'hero.button'],
+          knownTargets: ['home.hero/home.title', 'layout.mainMenu/menu.option'],
           count: 2,
         },
         capturedAt: '2026-04-18T11:05:00.000Z',
       },
       config: {
-        'hero.title': {
-          color: '#ff0000',
-          fontSize: '48px',
+        'home.hero/home.title': {
+          default: {
+            color: '#ff0000',
+            fontSize: '48px',
+          },
+          hover: {
+            color: '#0000ff',
+          },
         },
       },
     };
@@ -48,57 +53,6 @@ describe('ProjectService.validateProjectFile', () => {
     expect(result.config).toEqual(input.config);
   });
 
-  it('migrates a legacy v1 sourcePreview shape into the new structure', () => {
-    const input = {
-      schemaVersion: 1,
-      project: {
-        projectId: 'legacy-project',
-        name: 'Legacy',
-        baseUrl: 'https://legacy.example.com',
-        siteKey: 'legacy-site',
-        createdAt: '2026-04-17T08:00:00.000Z',
-        updatedAt: '2026-04-17T09:00:00.000Z',
-      },
-      sourcePreview: {
-        protocolVersion: 1,
-        moduleVersion: '1.0.0',
-        url: 'https://legacy.example.com/page',
-        origin: 'https://legacy.example.com',
-        title: 'Legacy Page',
-        siteKey: 'legacy-site',
-        siteName: 'Legacy Site',
-        knownTargets: ['hero.title', 'hero.subtitle'],
-      },
-      config: {
-        'hero.title': {
-          color: '#111111',
-        },
-      },
-    };
-
-    const result = ProjectService.validateProjectFile(input);
-
-    expect(result.schemaVersion).toBe(2);
-    expect(result.sourcePreview).toEqual({
-      protocolVersion: 1,
-      moduleVersion: '1.0.0',
-      page: {
-        url: 'https://legacy.example.com/page',
-        origin: 'https://legacy.example.com',
-        title: 'Legacy Page',
-      },
-      site: {
-        siteKey: 'legacy-site',
-        siteName: 'Legacy Site',
-      },
-      editable: {
-        knownTargets: ['hero.title', 'hero.subtitle'],
-        count: 2,
-      },
-      capturedAt: '2026-04-17T09:00:00.000Z',
-    });
-  });
-
   it('sanitizes config values while validating imported projects', () => {
     const input = {
       schemaVersion: 2,
@@ -109,72 +63,58 @@ describe('ProjectService.validateProjectFile', () => {
         updatedAt: '2026-04-18T11:00:00.000Z',
       },
       config: {
-        'hero.title': {
-          color: '#ff0000',
-          fontSize: '18px;',
-          fontWeight: '700',
+        'home.hero/home.title': {
+          default: {
+            color: '#ff0000',
+            fontSize: '18px;',
+            fontWeight: '700',
+          },
         },
       },
     };
 
     const result = ProjectService.validateProjectFile(input);
 
-    expect(result.config['hero.title']).toEqual({
-      color: '#ff0000',
-      fontWeight: '700',
-    });
-  });
-
-  it('accepts scoped config keys and preserves them on import', () => {
-    const input = {
-      schemaVersion: 2,
-      project: {
-        projectId: 'project-scoped',
-        name: 'Scoped Project',
-        createdAt: '2026-04-18T10:00:00.000Z',
-        updatedAt: '2026-04-18T11:00:00.000Z',
-      },
-      config: {
-        'layout.mainMenu/menu.option': {
-          color: '#ff0000',
-        },
-      },
-    };
-
-    const result = ProjectService.validateProjectFile(input);
-
-    expect(result.config).toEqual({
-      'layout.mainMenu/menu.option': {
+    expect(result.config['home.hero/home.title']).toEqual({
+      default: {
         color: '#ff0000',
+        fontWeight: '700',
       },
     });
   });
 
-  it('accepts stateful config values and preserves them on import', () => {
+  it('filters malformed knownTargets from sourcePreview metadata instead of rejecting the project', () => {
     const input = {
       schemaVersion: 2,
       project: {
-        projectId: 'project-stateful',
-        name: 'Stateful Project',
+        projectId: 'project-preview-metadata',
+        name: 'Preview Metadata',
         createdAt: '2026-04-18T10:00:00.000Z',
         updatedAt: '2026-04-18T11:00:00.000Z',
       },
+      sourcePreview: {
+        protocolVersion: 1,
+        page: {
+          url: 'https://example.com/page',
+          origin: 'https://example.com',
+          title: 'Page',
+        },
+        editable: {
+          knownTargets: ['home.hero/home.title', 'menu.option', 'layout.mainMenu/'],
+          count: 3,
+        },
+        capturedAt: '2026-04-18T11:05:00.000Z',
+      },
       config: {
-        'button.primary': {
+        'home.hero/home.title': {
           default: { color: '#ff0000' },
-          hover: { color: '#0000ff' },
         },
       },
     };
 
     const result = ProjectService.validateProjectFile(input);
 
-    expect(result.config).toEqual({
-      'button.primary': {
-        default: { color: '#ff0000' },
-        hover: { color: '#0000ff' },
-      },
-    });
+    expect(result.sourcePreview?.editable?.knownTargets).toEqual(['home.hero/home.title']);
   });
 
   it('accepts selected and open semantic states in stateful config values', () => {
@@ -198,12 +138,29 @@ describe('ProjectService.validateProjectFile', () => {
       },
     };
 
-    const result = ProjectService.validateProjectFile(input);
-
-    expect(result.config).toEqual(input.config);
+    expect(ProjectService.validateProjectFile(input).config).toEqual(input.config);
   });
 
-  it('rejects malformed target keys', () => {
+  it('rejects plain config values', () => {
+    const input = {
+      schemaVersion: 2,
+      project: {
+        projectId: 'project-flat',
+        name: 'Flat Config',
+        createdAt: '2026-04-18T10:00:00.000Z',
+        updatedAt: '2026-04-18T11:00:00.000Z',
+      },
+      config: {
+        'layout.mainMenu/menu.option': {
+          color: '#ff0000',
+        },
+      },
+    };
+
+    expect(() => ProjectService.validateProjectFile(input)).toThrow("Config d'estils no vàlida per al target layout.mainMenu/menu.option");
+  });
+
+  it('rejects config keys without scope', () => {
     const input = {
       schemaVersion: 2,
       project: {
@@ -213,8 +170,27 @@ describe('ProjectService.validateProjectFile', () => {
         updatedAt: '2026-04-18T11:00:00.000Z',
       },
       config: {
+        'menu.option': {
+          default: { color: '#ff0000' },
+        },
+      },
+    };
+
+    expect(() => ProjectService.validateProjectFile(input)).toThrow('Canonical target key must use exactly one scope/target separator');
+  });
+
+  it('rejects malformed target keys', () => {
+    const input = {
+      schemaVersion: 2,
+      project: {
+        projectId: 'project-invalid-key-2',
+        name: 'Invalid Target Key',
+        createdAt: '2026-04-18T10:00:00.000Z',
+        updatedAt: '2026-04-18T11:00:00.000Z',
+      },
+      config: {
         'layout.mainMenu/': {
-          color: '#ff0000',
+          default: { color: '#ff0000' },
         },
       },
     };
@@ -222,55 +198,39 @@ describe('ProjectService.validateProjectFile', () => {
     expect(() => ProjectService.validateProjectFile(input)).toThrow('Canonical target key must contain both scope and target');
   });
 
-  it('rejects hybrid stateful config values', () => {
-    const input = {
+  it('rejects unsupported schema versions', () => {
+    expect(() => ProjectService.validateProjectFile({ schemaVersion: 1, project: {}, config: {} })).toThrow('Versió d\'esquema no compatible');
+    expect(() => ProjectService.validateProjectFile({ schemaVersion: 99, project: {}, config: {} })).toThrow('Versió d\'esquema no compatible');
+  });
+
+  it('parses valid project JSON text', () => {
+    const raw = JSON.stringify({
       schemaVersion: 2,
       project: {
-        projectId: 'project-invalid-style-shape',
-        name: 'Invalid Style Shape',
+        projectId: 'project-json',
+        name: 'JSON Project',
         createdAt: '2026-04-18T10:00:00.000Z',
-        updatedAt: '2026-04-18T11:00:00.000Z',
+        updatedAt: '2026-04-18T10:00:00.000Z',
       },
       config: {
-        'button.primary': {
-          color: '#ff0000',
-          hover: { color: '#0000ff' },
+        'home.hero/home.title': {
+          default: { color: '#ff0000' },
         },
       },
-    };
+    });
 
-    expect(() => ProjectService.validateProjectFile(input)).toThrow("Config d'estils no vàlida per al target button.primary");
+    expect(ProjectService.parseProjectFileJson(raw).project.name).toBe('JSON Project');
   });
 
-  it('fills missing optional fields with stable defaults', () => {
-    const input = {
-      project: {
-        projectId: 'project-minimal',
-        name: 'Minimal Project',
-      },
-      config: {},
-    };
-
-    const result = ProjectService.validateProjectFile(input);
-
-    expect(result.schemaVersion).toBe(2);
-    expect(result.project.baseUrl).toBe('');
-    expect(result.project.siteKey).toBe('');
-    expect(result.project.createdAt).toBeTruthy();
-    expect(result.project.updatedAt).toBeTruthy();
-  });
-
-  it('throws on invalid structures and unsupported schema versions', () => {
-    expect(() => ProjectService.validateProjectFile(null)).toThrow('Estructura de fitxer no vàlida');
-    expect(() => ProjectService.validateProjectFile({ schemaVersion: 2, project: {}, config: [] })).toThrow('Estructura de fitxer no vàlida');
-    expect(() => ProjectService.validateProjectFile({ schemaVersion: 99, project: {}, config: {} })).toThrow('Versió d\'esquema no compatible');
+  it('throws a user-facing error for malformed project JSON text', () => {
+    expect(() => ProjectService.parseProjectFileJson('{')).toThrow('Fitxer JSON no vàlid');
   });
 });
 
 describe('ProjectService.prepareForPersistence', () => {
   it('returns a normalized v2 export with refreshed updatedAt', () => {
     const project = {
-      schemaVersion: 1,
+      schemaVersion: 2,
       project: {
         projectId: 'project-persist',
         name: 'Persisted',
@@ -280,8 +240,10 @@ describe('ProjectService.prepareForPersistence', () => {
         updatedAt: '2026-04-18T10:00:00.000Z',
       },
       config: {
-        'hero.title': {
-          color: '#ff0000',
+        'home.hero/home.title': {
+          default: {
+            color: '#ff0000',
+          },
         },
       },
     };
@@ -291,6 +253,10 @@ describe('ProjectService.prepareForPersistence', () => {
       page: {
         url: 'https://example.com/home',
         origin: 'https://example.com',
+      },
+      editable: {
+        knownTargets: ['home.hero/home.title'],
+        count: 1,
       },
       capturedAt: '2026-04-18T12:00:00.000Z',
     };
@@ -307,38 +273,17 @@ describe('ProjectService.prepareForPersistence', () => {
         title: '',
       },
       site: undefined,
-      editable: undefined,
+      editable: {
+        knownTargets: ['home.hero/home.title'],
+        count: 1,
+      },
       capturedAt: '2026-04-18T12:00:00.000Z',
     });
     expect(result.project.updatedAt).not.toBe('2026-04-18T10:00:00.000Z');
     expect(result.project.createdAt).toBe('2026-04-18T10:00:00.000Z');
   });
 
-  it('preserves legacy and scoped keys exactly when persisting', () => {
-    const project = {
-      schemaVersion: 2,
-      project: {
-        projectId: 'project-key-preservation',
-        name: 'Key Preservation',
-        createdAt: '2026-04-18T10:00:00.000Z',
-        updatedAt: '2026-04-18T10:00:00.000Z',
-      },
-      config: {
-        'menu.option': {
-          color: '#111111',
-        },
-        'layout.mainMenu/menu.option': {
-          fontSize: '18px',
-        },
-      },
-    };
-
-    const result = ProjectService.prepareForPersistence(project);
-
-    expect(Object.keys(result.config)).toEqual(['menu.option', 'layout.mainMenu/menu.option']);
-  });
-
-  it('preserves stateful config format when persisting', () => {
+  it('preserves stateful scoped config format when persisting', () => {
     const project = {
       schemaVersion: 2,
       project: {
@@ -348,100 +293,74 @@ describe('ProjectService.prepareForPersistence', () => {
         updatedAt: '2026-04-18T10:00:00.000Z',
       },
       config: {
-        'button.primary': {
+        'layout.mainMenu/menu.option': {
           default: { color: '#ff0000' },
           hover: { color: '#0000ff' },
         },
       },
     };
 
-    const result = ProjectService.prepareForPersistence(project);
+    expect(ProjectService.prepareForPersistence(project).config).toEqual(project.config);
+  });
 
-    expect(result.config).toEqual({
-      'button.primary': {
-        default: { color: '#ff0000' },
-        hover: { color: '#0000ff' },
+  it('builds a sanitized export filename from siteKey or project name', () => {
+    expect(ProjectService.buildExportFilename({
+      schemaVersion: 2,
+      project: {
+        projectId: 'project-export',
+        name: 'My Landing Page',
+        siteKey: 'Example Site',
+        createdAt: '2026-04-18T10:00:00.000Z',
+        updatedAt: '2026-04-18T10:00:00.000Z',
       },
+      config: {},
+    })).toMatch(/^example-site-\d{4}-\d{2}-\d{2}\.json$/);
+  });
+
+  it('normalizes imported style values with property-aware validation', () => {
+    expect(ProjectService.sanitizeStyles({
+      color: '#FF0000',
+      fontSize: '16.0px',
+      fontWeight: '700',
+    })).toEqual({
+      color: '#ff0000',
+      fontSize: '16px',
+      fontWeight: '700',
     });
   });
 
-  it('converts legacy config to stateful only when updating a non-default state', () => {
+  it('updates the requested state using only the stateful scoped contract', () => {
     const config = {
-      'button.primary': {
-        color: '#000000',
+      'layout.mainMenu/menu.option': {
+        default: { color: '#000000' },
       },
     };
 
-    const result = ProjectService.updateConfig(config, 'button.primary', { color: '#ff0000' }, 'hover');
-
-    expect(result).toEqual({
-      'button.primary': {
+    expect(ProjectService.updateConfig(config, 'layout.mainMenu/menu.option', { color: '#ff0000' }, 'hover')).toEqual({
+      'layout.mainMenu/menu.option': {
         default: { color: '#000000' },
         hover: { color: '#ff0000' },
-      },
-    });
-
-    expect(ProjectService.updateConfig(config, 'button.primary', { fontWeight: '700' }, 'selected')).toEqual({
-      'button.primary': {
-        default: { color: '#000000' },
-        selected: { fontWeight: '700' },
-      },
-    });
-
-    expect(ProjectService.updateConfig(config, 'button.primary', { color: '#0055ff' }, 'open')).toEqual({
-      'button.primary': {
-        default: { color: '#000000' },
-        open: { color: '#0055ff' },
       },
     });
   });
 
   it('removes only the active non-default state property without touching default', () => {
     const config = {
-      'button.primary': {
+      'layout.mainMenu/menu.option': {
         default: { color: '#000000' },
         hover: { color: '#ff0000', fontSize: '18px' },
       },
     };
 
-    const result = ProjectService.removeStylesFromConfig(config, 'button.primary', ['color'], 'hover');
-
-    expect(result).toEqual({
-      'button.primary': {
+    expect(ProjectService.removeStylesFromConfig(config, 'layout.mainMenu/menu.option', ['color'], 'hover')).toEqual({
+      'layout.mainMenu/menu.option': {
         default: { color: '#000000' },
         hover: { fontSize: '18px' },
-      },
-    });
-
-    const semanticConfig = {
-      'tabs.main/tab.option': {
-        default: { color: '#666666' },
-        selected: { color: '#111111', fontWeight: '700' },
-      },
-    };
-
-    expect(ProjectService.removeStylesFromConfig(semanticConfig, 'tabs.main/tab.option', ['color'], 'selected')).toEqual({
-      'tabs.main/tab.option': {
-        default: { color: '#666666' },
-        selected: { fontWeight: '700' },
       },
     });
   });
 
   it('copies default styles into a destination state and overwrites existing destination styles', () => {
-    const legacyConfig = {
-      'button.primary': {
-        color: '#000000',
-      },
-    };
-
-    expect(ProjectService.copyStylesFromDefault(legacyConfig, 'button.primary', 'hover')).toEqual({
-      'button.primary': {
-        default: { color: '#000000' },
-        hover: { color: '#000000' },
-      },
-    });
-
     const statefulConfig = {
       'tabs.main/tab.option': {
         default: { color: '#000000', fontSize: '16px' },

@@ -51,16 +51,27 @@ export const DraftStorage = {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
 
+    const clearInvalidDraft = () => {
+      window.localStorage.removeItem(STORAGE_KEY);
+    };
+
     try {
       const parsed = JSON.parse(raw) as StoredDraft;
-      if (!parsed?.project || !parsed?.timestamp || !parsed?.sessionId) return null;
-      if (parsed.sessionId !== sessionId && !isRecent(parsed.timestamp)) return null;
+      if (!parsed?.project || !parsed?.timestamp || !parsed?.sessionId) {
+        clearInvalidDraft();
+        return null;
+      }
+      if (parsed.sessionId !== sessionId && !isRecent(parsed.timestamp)) {
+        clearInvalidDraft();
+        return null;
+      }
       return {
         ...parsed,
         project: ProjectService.validateProjectFile(parsed.project),
         sourcePreview: parsed.sourcePreview,
       };
     } catch {
+      clearInvalidDraft();
       return null;
     }
   },

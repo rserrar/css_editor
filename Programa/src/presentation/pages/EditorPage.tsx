@@ -1,12 +1,12 @@
 
 import { motion } from 'motion/react';
-import { Download, AlertCircle, CheckCircle2, Languages } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Languages } from 'lucide-react';
 import { StylePanel } from '../components/StylePanel';
 import { TargetNavigator } from '../components/TargetNavigator';
-import { CompatibilityReport, ProjectFile, PreviewInfoResponse } from '../../domain/models';
+import { AllowedStyleKey, CompatibilityReport, EditableStyleSet, ProjectFile, PreviewInfoResponse } from '../../domain/models';
 import { useTranslation } from '../../infrastructure/i18n/I18nContext';
 import { Language } from '../../domain/translations';
-import { hasScopedTargetKey, parseCanonicalKey } from '../../domain/targetKey';
+import { tryParseCanonicalKey } from '../../domain/targetKey';
 import { RUNTIME_STYLE_STATES, RuntimeStyleState } from '../../domain/styleStateHelpers';
 
 interface Props {
@@ -19,11 +19,10 @@ interface Props {
   onStyleStateSelect: (state: RuntimeStyleState) => void;
   onTargetSelect: (target: string | null) => void;
   onTargetHover: (target: string | null) => void;
-  onUpdateStyle: (target: string, state: RuntimeStyleState, styles: any) => void;
-  onRemoveStyle: (target: string, state: RuntimeStyleState, key: any) => void;
+  onUpdateStyle: (target: string, state: RuntimeStyleState, styles: EditableStyleSet) => void;
+  onRemoveStyle: (target: string, state: RuntimeStyleState, key: AllowedStyleKey) => void;
   onCopyStateFromDefault: (target: string, state: RuntimeStyleState) => void;
-  getEditableStyles: (target: string) => any;
-  getEditableStylesForState: (target: string, state: RuntimeStyleState) => any;
+  getEditableStylesForState: (target: string, state: RuntimeStyleState) => EditableStyleSet;
   getDefinedStatesForTarget: (target: string) => RuntimeStyleState[];
   onExport: () => void;
 }
@@ -41,14 +40,16 @@ export function EditorPage({
   onUpdateStyle,
   onRemoveStyle,
   onCopyStateFromDefault,
-  getEditableStyles,
   getEditableStylesForState,
   getDefinedStatesForTarget,
   onExport
 }: Props) {
   const { t, language, setLanguage } = useTranslation();
-  const targets = preview?.editable.targets || Object.keys(project.config);
-  const styledTargets = new Set(Object.keys(project.config).filter((target) => Object.keys(project.config[target] || {}).length > 0));
+  const targets = Array.from(new Set([
+    ...Object.keys(project.config),
+    ...(preview?.editable.targets || []),
+  ])).filter((target) => Boolean(tryParseCanonicalKey(target)));
+  const styledTargets = new Set(Object.keys(project.config).filter((target) => getDefinedStatesForTarget(target).length > 0));
   const statefulTargets = new Set(Object.keys(project.config).filter((target) => getDefinedStatesForTarget(target).some((state) => state !== 'default')));
   const missingTargets = compatibilityReport?.missingTargetsInPreview || [];
   const newTargets = compatibilityReport?.newTargetsInPreview || [];
@@ -82,20 +83,8 @@ export function EditorPage({
     : compatibilityReport?.severity === 'warning'
       ? t('editor.compatibilityWarning')
       : t('editor.compatibilityOk');
-  const selectedTargetParts = selectedTarget ? parseCanonicalKey(selectedTarget) : null;
+  const selectedTargetParts = selectedTarget ? tryParseCanonicalKey(selectedTarget) : null;
   const definedStates = selectedTarget ? getDefinedStatesForTarget(selectedTarget) : [];
-  const projectConfigTargets = Object.keys(project.config);
-  const projectFormatLabel = projectConfigTargets.length === 0
-    ? t('editor.noTargetsFormat')
-    : projectConfigTargets.some((target) => hasScopedTargetKey(target))
-      ? t('editor.scopedKey')
-      : t('editor.legacyKey');
-  const previewFormatLabel = !preview || preview.editable.targets.length === 0
-    ? t('editor.noTargetsFormat')
-    : preview.editable.targets.some((target) => hasScopedTargetKey(target))
-      ? t('editor.scopedKey')
-      : t('editor.legacyKey');
-  const hasFormatMismatch = compatibilityReport?.messages.some((message) => message.includes('legacy vs scoped'));
 
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-bg-base">
@@ -132,9 +121,6 @@ export function EditorPage({
             className="px-3 py-1.5 border border-border rounded bg-white text-[12px] font-medium hover:bg-slate-50 transition-colors"
           >
             {t('editor.exportJson')}
-          </button>
-          <button className="px-3 py-1.5 bg-accent text-white rounded text-[12px] font-semibold hover:bg-opacity-90 shadow-sm">
-            {t('editor.pushPreview')}
           </button>
         </div>
       </header>
@@ -173,11 +159,10 @@ export function EditorPage({
 
         {/* Content Area */}
         <main className="flex-1 flex flex-col bg-[#fafafa] overflow-hidden">
-          {/* Tab Navigation */}
-          <div className="flex gap-6 border-b border-border px-6 bg-white shrink-0">
-            <div className="py-3 border-b-2 border-accent text-accent font-semibold text-[13px] cursor-pointer">{t('editor.visualEditor')}</div>
-            <div className="py-3 border-b-2 border-transparent text-text-muted font-medium text-[13px] cursor-pointer hover:text-text-main">{t('editor.globalConfig')}</div>
-            <div className="py-3 border-b-2 border-transparent text-text-muted font-medium text-[13px] cursor-pointer hover:text-text-main">{t('editor.history')}</div>
+          <div className="border-b border-border px-6 bg-white shrink-0">
+            <div className="py-3 border-b-2 border-accent text-accent font-semibold text-[13px] inline-flex">
+              {t('editor.visualEditor')}
+            </div>
           </div>
 
           <div className="flex-1 overflow-y-auto p-6">
@@ -186,23 +171,8 @@ export function EditorPage({
                 <div className={`${compatibilityTone} border px-4 py-3 rounded-lg flex items-start gap-3`}>
                   <AlertCircle size={18} />
                   <div className="space-y-2">
-                    <div className="text-sm font-semibold">{compatibilityTitle}</div>
-                    {(projectConfigTargets.length > 0 || preview?.editable.targets.length) && (
-                      <div className="flex flex-wrap gap-2 text-[11px] uppercase tracking-widest font-bold">
-                        <span className="px-2 py-1 rounded bg-white/60 border border-current/10">
-                          {t('editor.projectFormat')}: {projectFormatLabel}
-                        </span>
-                        <span className="px-2 py-1 rounded bg-white/60 border border-current/10">
-                          {t('editor.previewFormat')}: {previewFormatLabel}
-                        </span>
-                        {hasFormatMismatch && (
-                          <span className="px-2 py-1 rounded bg-white/60 border border-current/10">
-                            {t('editor.formatMismatch')}
-                          </span>
-                        )}
-                      </div>
-                    )}
-                    {compatibilityReport.messages.length > 0 ? (
+                  <div className="text-sm font-semibold">{compatibilityTitle}</div>
+                  {compatibilityReport.messages.length > 0 ? (
                       <div className="space-y-1">
                         {compatibilityReport.messages.map((message) => (
                           <div key={message} className="text-sm">{message}</div>
@@ -211,9 +181,38 @@ export function EditorPage({
                     ) : (
                       <div className="text-sm">{t('editor.compatibilityOk')}</div>
                     )}
+                    {!hasTargetDiagnostics && compatibilityReport.severity !== 'error' ? (
+                      <div className="text-[11px] uppercase tracking-widest font-bold opacity-70">
+                        {t('editor.noTargetIssues')}
+                      </div>
+                    ) : null}
                   </div>
                 </div>
               )}
+
+              {selectedTarget ? (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.98 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                >
+                  <StylePanel 
+                     target={selectedTarget}
+                     styles={getEditableStylesForState(selectedTarget, selectedStyleState)}
+                     configValue={project.config[selectedTarget]}
+                     selectedStyleState={selectedStyleState}
+                     availableStates={definedStates}
+                     onStyleStateSelect={onStyleStateSelect}
+                     onCopyStateFromDefault={() => onCopyStateFromDefault(selectedTarget, selectedStyleState)}
+                     onChange={(styles) => onUpdateStyle(selectedTarget, selectedStyleState, styles)}
+                     onRemove={(key) => onRemoveStyle(selectedTarget, selectedStyleState, key)}
+                    />
+                </motion.div>
+              ) : (
+                <div className="text-center py-20 bg-white border border-dashed border-border rounded-xl">
+                  <div className="text-text-muted mb-2 font-semibold font-sans">{t('editor.selectTargetPrompt')}</div>
+                   <div className="text-[11px] text-text-muted opacity-50 uppercase tracking-widest italic font-mono">{t('editor.waitingInput')}</div>
+                 </div>
+               )}
 
               {preview && compatibilityReport && hasTargetDiagnostics && (
                 <div className="bg-white border border-border rounded-xl p-4 space-y-3">
@@ -251,30 +250,6 @@ export function EditorPage({
                   </div>
                 </div>
               )}
-
-              {selectedTarget ? (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.98 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                >
-                  <StylePanel 
-                     target={selectedTarget}
-                     styles={getEditableStylesForState(selectedTarget, selectedStyleState)}
-                     configValue={project.config[selectedTarget]}
-                     selectedStyleState={selectedStyleState}
-                     availableStates={definedStates}
-                     onStyleStateSelect={onStyleStateSelect}
-                     onCopyStateFromDefault={() => onCopyStateFromDefault(selectedTarget, selectedStyleState)}
-                     onChange={(styles) => onUpdateStyle(selectedTarget, selectedStyleState, styles)}
-                     onRemove={(key) => onRemoveStyle(selectedTarget, selectedStyleState, key)}
-                    />
-                </motion.div>
-              ) : (
-                <div className="text-center py-20 bg-white border border-dashed border-border rounded-xl">
-                  <div className="text-text-muted mb-2 font-semibold font-sans">{t('editor.selectTargetPrompt')}</div>
-                  <div className="text-[11px] text-text-muted opacity-50 uppercase tracking-widest italic font-mono">{t('editor.waitingInput')}</div>
-                </div>
-              )}
             </div>
           </div>
 
@@ -282,7 +257,7 @@ export function EditorPage({
           <footer className="h-7 bg-white border-top border-border px-3 flex items-center justify-between shrink-0 text-[11px] text-text-muted font-mono">
             <div>{t('editor.session')}: {project.project.projectId.slice(0, 8)} | {t('editor.protocol')}: 1.0.0</div>
             <div>
-              {t('editor.target')}: {selectedTargetParts ? `${selectedTargetParts.scope ? `${selectedTargetParts.scope} / ` : ''}${selectedTargetParts.target}` : 'None'}
+              {t('editor.target')}: {selectedTargetParts ? `${selectedTargetParts.scope} / ${selectedTargetParts.target}` : t('editor.noTargetSelectedShort')}
             </div>
           </footer>
         </main>

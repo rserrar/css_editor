@@ -10,8 +10,8 @@
     "clean": "node -e \"require('fs').rmSync('dist', { recursive: true, force: true })\"",
     "lint": "tsc --noEmit",
     "test:unit": "vitest run src/domain/projectService.test.ts src/domain/compatibilityService.test.ts src/domain/styleValidators.test.ts src/domain/targetKey.test.ts src/domain/styleStates.test.ts src/domain/styleStateHelpers.test.ts src/infrastructure/storage/draftStorage.test.ts src/infrastructure/transport/PostMessageTransport.test.ts src/presentation/components/TargetNavigator.test.tsx src/presentation/components/StyleValueField.test.tsx src/presentation/components/StylePanel.test.tsx",
-    "test:e2e": "playwright test",
-    "test:e2e:headed": "playwright test --headed"
+    "test:e2e": "node ./node_modules/@playwright/test/cli.js test",
+    "test:e2e:headed": "node ./node_modules/@playwright/test/cli.js test --headed"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.1.14",

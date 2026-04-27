@@ -70,7 +70,7 @@ describe('StyleValueField', () => {
     expect(onChange.mock.calls).toHaveLength(callsBeforeInvalid);
   });
 
-  it('shows warning for legacy invalid values and allows correcting them', () => {
+  it('shows warning for invalid values and allows correcting them', () => {
     const { onChange } = renderField({ property: 'fontSize', value: 'large' });
 
     expect(screen.getByText('El valor actual no encaixa amb el format esperat. El pots corregir sense perdre\'l.')).toBeTruthy();

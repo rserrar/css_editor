@@ -1,9 +1,9 @@
-import { EditableStyleSet, LegacySourcePreview, ProjectFile, SourcePreview, StatefulStyleSet, StyleConfig, StyleConfigValue } from './models';
-import { parseCanonicalKey } from './targetKey';
-import { copyStateFromDefault, isEditableStyleSet, isStatefulStyle, removeFromState, RuntimeStyleState, updateStateStyles } from './styleStateHelpers';
+import { EditableStyleSet, ProjectFile, SourcePreview, StatefulStyleSet, StyleConfig } from './models';
+import { parseCanonicalKey, tryParseCanonicalKey } from './targetKey';
+import { copyStateFromDefault, createEmptyStatefulStyleSet, isStatefulStyle, removeFromState, RUNTIME_STYLE_STATES, RuntimeStyleState, updateStateStyles } from './styleStateHelpers';
+import { validateStyleValue } from './styleValidators';
 
 const CURRENT_SCHEMA_VERSION = 2;
-const SAFE_CSS_VALUE_REGEX = /^[a-zA-Z0-9\s.,#%()\-!]+$/;
 
 function isRecord(value: unknown): value is Record<string, any> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -13,88 +13,74 @@ function asString(value: unknown, fallback = ''): string {
   return typeof value === 'string' ? value : fallback;
 }
 
+function normalizeKnownTargets(targets: unknown): string[] | undefined {
+  if (!Array.isArray(targets)) return undefined;
+
+  return targets
+    .map((target) => tryParseCanonicalKey(asString(target))?.canonicalKey)
+    .filter((target): target is string => Boolean(target));
+}
+
+function normalizeSourcePreview(sourcePreview: unknown, fallbackCapturedAt: string): SourcePreview | undefined {
+  if (!isRecord(sourcePreview) || typeof sourcePreview.protocolVersion !== 'number') return undefined;
+
+  const page = isRecord(sourcePreview.page) ? sourcePreview.page : {};
+  const site = isRecord(sourcePreview.site) ? sourcePreview.site : undefined;
+  const editable = isRecord(sourcePreview.editable) ? sourcePreview.editable : undefined;
+
+  return {
+    protocolVersion: sourcePreview.protocolVersion,
+    moduleVersion: asString(sourcePreview.moduleVersion) || undefined,
+    page: {
+      url: asString(page.url),
+      origin: asString(page.origin),
+      title: asString(page.title),
+    },
+    site: site
+      ? {
+          siteKey: asString(site.siteKey),
+          siteName: asString(site.siteName),
+          environment: asString(site.environment) || undefined,
+        }
+      : undefined,
+    editable: editable
+      ? {
+          knownTargets: normalizeKnownTargets(editable.knownTargets),
+          count: typeof editable.count === 'number' ? editable.count : undefined,
+        }
+      : undefined,
+    capturedAt: asString(sourcePreview.capturedAt, fallbackCapturedAt),
+  };
+}
+
 function normalizeStyleConfig(config: unknown): StyleConfig {
   if (!isRecord(config)) return {};
 
   const normalized: StyleConfig = {};
   for (const [target, styles] of Object.entries(config)) {
     const normalizedTarget = parseCanonicalKey(target).canonicalKey;
-    if (!isRecord(styles)) continue;
-
-    if (isEditableStyleSet(styles)) {
-      normalized[normalizedTarget] = ProjectService.sanitizeStyles(styles as EditableStyleSet);
-      continue;
+    if (!isStatefulStyle(styles)) {
+      throw new Error(`Config d'estils no vàlida per al target ${normalizedTarget}`);
     }
 
-    if (isStatefulStyle(styles)) {
-      const normalizedStates: StatefulStyleSet = {};
-      for (const [state, stateStyles] of Object.entries(styles)) {
-        normalizedStates[state as keyof StatefulStyleSet] = ProjectService.sanitizeStyles(stateStyles as EditableStyleSet);
+    const normalizedStates = createEmptyStatefulStyleSet();
+    for (const state of RUNTIME_STYLE_STATES) {
+      if (styles[state]) {
+        normalizedStates[state] = ProjectService.sanitizeStyles(styles[state] as EditableStyleSet);
       }
-      normalized[normalizedTarget] = normalizedStates;
-      continue;
     }
 
-    throw new Error(`Config d'estils no vàlida per al target ${normalizedTarget}`);
+    normalized[normalizedTarget] = normalizedStates;
   }
 
   return normalized;
 }
 
-function normalizeLegacySourcePreview(sourcePreview: LegacySourcePreview | SourcePreview | undefined, fallbackCapturedAt: string): SourcePreview | undefined {
-  if (!sourcePreview || typeof sourcePreview.protocolVersion !== 'number') return undefined;
+function slugifyFilenamePart(value: string): string {
+  const trimmed = value.trim().toLowerCase();
+  if (!trimmed) return 'projecte';
 
-  if ('page' in sourcePreview) {
-    return {
-      protocolVersion: sourcePreview.protocolVersion,
-      moduleVersion: sourcePreview.moduleVersion,
-      page: {
-        url: asString(sourcePreview.page?.url),
-        origin: asString(sourcePreview.page?.origin),
-        title: asString(sourcePreview.page?.title),
-      },
-      site: sourcePreview.site
-        ? {
-            siteKey: asString(sourcePreview.site.siteKey),
-            siteName: asString(sourcePreview.site.siteName),
-            environment: asString(sourcePreview.site.environment),
-          }
-        : undefined,
-      editable: sourcePreview.editable
-        ? {
-            knownTargets: Array.isArray(sourcePreview.editable.knownTargets) ? sourcePreview.editable.knownTargets.filter((item): item is string => typeof item === 'string') : undefined,
-            count: typeof sourcePreview.editable.count === 'number' ? sourcePreview.editable.count : undefined,
-          }
-        : undefined,
-      capturedAt: asString(sourcePreview.capturedAt, fallbackCapturedAt),
-    };
-  }
-
-  const legacy = sourcePreview as LegacySourcePreview;
-  const knownTargets = Array.isArray(legacy.knownTargets)
-    ? legacy.knownTargets.filter((item): item is string => typeof item === 'string')
-    : [];
-
-  return {
-    protocolVersion: legacy.protocolVersion,
-    moduleVersion: legacy.moduleVersion,
-    page: {
-      url: asString(legacy.url),
-      origin: asString(legacy.origin),
-      title: asString(legacy.title),
-    },
-    site: legacy.siteKey || legacy.siteName
-      ? {
-          siteKey: asString(legacy.siteKey),
-          siteName: asString(legacy.siteName),
-        }
-      : undefined,
-    editable: {
-      knownTargets,
-      count: knownTargets.length,
-    },
-    capturedAt: fallbackCapturedAt,
-  };
+  return trimmed.replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'projecte';
 }
 
 export const ProjectService = {
@@ -151,8 +137,8 @@ export const ProjectService = {
       throw new Error('Estructura de fitxer no vàlida');
     }
 
-    const schemaVersion = typeof data.schemaVersion === 'number' ? data.schemaVersion : 1;
-    if (![1, CURRENT_SCHEMA_VERSION].includes(schemaVersion)) {
+    const schemaVersion = typeof data.schemaVersion === 'number' ? data.schemaVersion : CURRENT_SCHEMA_VERSION;
+    if (schemaVersion !== CURRENT_SCHEMA_VERSION) {
       throw new Error('Versió d\'esquema no compatible');
     }
 
@@ -171,20 +157,42 @@ export const ProjectService = {
         createdAt,
         updatedAt,
       },
-      sourcePreview: normalizeLegacySourcePreview(data.sourcePreview as LegacySourcePreview | SourcePreview | undefined, updatedAt),
+      sourcePreview: normalizeSourcePreview(data.sourcePreview, updatedAt),
       config: normalizeStyleConfig(data.config),
     };
+  },
+
+  parseProjectFileJson(raw: string): ProjectFile {
+    let parsed: unknown;
+
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      throw new Error('Fitxer JSON no vàlid');
+    }
+
+    return this.validateProjectFile(parsed);
+  },
+
+  buildExportFilename(project: ProjectFile): string {
+    const baseName = project.project.siteKey || project.project.name || 'projecte';
+    const datePart = new Date().toISOString().split('T')[0];
+    return `${slugifyFilenamePart(baseName)}-${datePart}.json`;
   },
 
   sanitizeStyles(styles: EditableStyleSet): EditableStyleSet {
     const clean: EditableStyleSet = {};
 
     for (const [key, value] of Object.entries(styles)) {
+      const property = key as keyof EditableStyleSet;
       const val = value as string;
-      if (val && SAFE_CSS_VALUE_REGEX.test(val)) {
-        clean[key as keyof EditableStyleSet] = val;
-      } else if (val) {
-        console.warn(`Valor insegur detectat i bloquejat per la propietat ${key}: ${val}`);
+      if (!val) continue;
+
+      const result = validateStyleValue(property, val);
+      if (result.isValid) {
+        clean[property] = result.normalizedValue;
+      } else {
+        console.warn(`Valor no vàlid detectat i bloquejat per la propietat ${key}: ${val}`);
       }
     }
 
@@ -193,26 +201,29 @@ export const ProjectService = {
 
   updateConfig(config: StyleConfig, target: string, styles: EditableStyleSet, state: RuntimeStyleState = 'default'): StyleConfig {
     const sanitized = this.sanitizeStyles(styles);
+    const canonicalTarget = parseCanonicalKey(target).canonicalKey;
     return {
       ...config,
-      [target]: updateStateStyles(config[target], state, sanitized),
+      [canonicalTarget]: updateStateStyles(config[canonicalTarget], state, sanitized),
     };
   },
 
   removeStylesFromConfig(config: StyleConfig, target: string, keys: string[], state: RuntimeStyleState = 'default'): StyleConfig {
-    if (!config[target]) return config;
-    const newTargetConfig = removeFromState(config[target], state, keys as any);
+    const canonicalTarget = parseCanonicalKey(target).canonicalKey;
+    if (!config[canonicalTarget]) return config;
+    const newTargetConfig = removeFromState(config[canonicalTarget], state, keys as any);
 
     return {
       ...config,
-      [target]: newTargetConfig || {},
+      [canonicalTarget]: newTargetConfig || createEmptyStatefulStyleSet(),
     };
   },
 
   copyStylesFromDefault(config: StyleConfig, target: string, destinationState: RuntimeStyleState): StyleConfig {
+    const canonicalTarget = parseCanonicalKey(target).canonicalKey;
     return {
       ...config,
-      [target]: copyStateFromDefault(config[target], destinationState),
+      [canonicalTarget]: copyStateFromDefault(config[canonicalTarget], destinationState),
     };
   },
 };

@@ -18,70 +18,70 @@
 <body>
     <div class="container">
         <section>
-            <h1 data-editable="home.title">Benvinguts a la Preview</h1>
+            <h1 data-editable-scope="home.hero" data-editable="home.title">Benvinguts a la Preview</h1>
         </section>
 
-        <nav class="card" data-editable-scope="layout.mainMenu">
-            <h2 data-editable="menu.title">Menu principal</h2>
+        <nav class="card">
+            <h2 data-editable-scope="layout.mainMenu" data-editable="menu.title">Menu principal</h2>
             <div style="display:flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 1rem;">
-                <a href="#" data-editable="menu.option">Inici</a>
-                <a href="#" data-editable="menu.option" data-editable-master="true">Productes</a>
-                <a href="#" data-editable="menu.option">Preus</a>
+                <a href="#" data-editable-scope="layout.mainMenu" data-editable="menu.option">Inici</a>
+                <a href="#" data-editable-scope="layout.mainMenu" data-editable="menu.option">Productes</a>
+                <a href="#" data-editable-scope="layout.mainMenu" data-editable="menu.option">Preus</a>
             </div>
             <div style="margin-top: 1rem; padding-left: 1rem; border-left: 2px solid #e5e7eb;">
-                <a href="#" data-editable="menu.subOption">Hosting</a>
+                <a href="#" data-editable-scope="layout.mainMenu" data-editable="menu.subOption">Hosting</a>
             </div>
         </nav>
 
-        <footer class="card" data-editable-scope="layout.footerMenu">
-            <h2 data-editable="menu.title">Menu footer</h2>
+        <footer class="card">
+            <h2 data-editable-scope="layout.footerMenu" data-editable="menu.title">Menu footer</h2>
             <div style="display:flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 1rem;">
-                <a href="#" data-editable="menu.option" aria-current="page">Contacte</a>
-                <a href="#" data-editable="menu.option">Privacitat</a>
+                <a href="#" data-editable-scope="layout.footerMenu" data-editable="menu.option" aria-current="page">Contacte</a>
+                <a href="#" data-editable-scope="layout.footerMenu" data-editable="menu.option">Privacitat</a>
             </div>
         </footer>
 
-        <div class="card" data-editable-scope="tabs.main">
-            <h2 data-editable="tabs.title">Tabs principals</h2>
+        <div class="card">
+            <h2 data-editable-scope="tabs.main" data-editable="tabs.title">Tabs principals</h2>
             <div style="display:flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 1rem;">
-                <button data-editable="tab.option" aria-selected="true">Descripcio</button>
-                <button data-editable="tab.option">Opinions</button>
-            </div>
-        </div>
-
-        <div class="card" data-editable-scope="faq.list">
-            <h2 data-editable="accordion.title">Preguntes frequents</h2>
-            <div style="display:flex; flex-direction:column; gap: 0.75rem; margin-top: 1rem;">
-                <button data-editable="accordion.trigger" data-state="open">Que inclou?</button>
-                <button data-editable="accordion.trigger">Preus</button>
-            </div>
-        </div>
-
-        <div class="card" data-editable-scope="filters.panel">
-            <h2 data-editable="filter.title">Filtres</h2>
-            <div style="margin-top: 1rem;">
-                <button data-editable="filter.trigger" aria-expanded="true">Categoria</button>
+                <button data-editable-scope="tabs.main" data-editable="tab.option" aria-selected="true">Descripcio</button>
+                <button data-editable-scope="tabs.main" data-editable="tab.option">Opinions</button>
             </div>
         </div>
 
         <div class="card">
-            <h2 data-editable="home.subtitle">Panell de subscripcio</h2>
-            <p>Aquest es un exemple d'una web que te elements editables.</p>
-
-            <div style="margin-bottom: 1rem;">
-                <label data-editable="form.label">El teu correu</label>
-                <input type="email" placeholder="correu@exemple.com">
-            </div>
-
-            <button data-editable="form.button">Subscriu-me ara</button>
-            <div style="margin-top: 1rem;">
-                <button data-editable="button.primary">Prova hover i focus</button>
+            <h2 data-editable-scope="faq.list" data-editable="accordion.title">Preguntes frequents</h2>
+            <div style="display:flex; flex-direction:column; gap: 0.75rem; margin-top: 1rem;">
+                <button data-editable-scope="faq.list" data-editable="accordion.trigger" data-state="open">Que inclou?</button>
+                <button data-editable-scope="faq.list" data-editable="accordion.trigger">Preus</button>
             </div>
         </div>
 
-        <ul class="card" data-editable-scope="home.features" style="padding-left: 1.25rem;">
-            <li data-editable="card.title">Rapid</li>
-            <li data-editable="card.title">Segur</li>
+        <div class="card">
+            <h2 data-editable-scope="filters.panel" data-editable="filter.title">Filtres</h2>
+            <div style="margin-top: 1rem;">
+                <button data-editable-scope="filters.panel" data-editable="filter.trigger" aria-expanded="true">Categoria</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2 data-editable-scope="home.subscription" data-editable="home.subtitle">Panell de subscripcio</h2>
+            <p>Aquest es un exemple d'una web que te elements editables.</p>
+
+            <div style="margin-bottom: 1rem;">
+                <label data-editable-scope="home.subscription" data-editable="form.label">El teu correu</label>
+                <input type="email" placeholder="correu@exemple.com">
+            </div>
+
+            <button data-editable-scope="home.subscription" data-editable="form.button">Subscriu-me ara</button>
+            <div style="margin-top: 1rem;">
+                <button data-editable-scope="home.subscription" data-editable="button.primary">Prova hover i focus</button>
+            </div>
+        </div>
+
+        <ul class="card" style="padding-left: 1.25rem;">
+            <li data-editable-scope="home.features" data-editable="card.title">Rapid</li>
+            <li data-editable-scope="home.features" data-editable="card.title">Segur</li>
         </ul>
 
         <div class="help">

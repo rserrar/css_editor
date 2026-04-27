@@ -1,4 +1,4 @@
-import { ALLOWED_CSS_PROPERTIES, AllowedStyleKey, EditableStyleSet, StatefulStyleSet, StyleConfigValue } from './models';
+import { ALLOWED_CSS_PROPERTIES, AllowedStyleKey, EditableStyleSet, StatefulStyleSet } from './models';
 
 export const RUNTIME_STYLE_STATES = ['default', 'hover', 'focus', 'active', 'disabled', 'selected', 'open'] as const;
 export type RuntimeStyleState = (typeof RUNTIME_STYLE_STATES)[number];
@@ -20,57 +20,45 @@ export function isStatefulStyle(value: unknown): value is StatefulStyleSet {
   if (!isRecord(value)) return false;
 
   const keys = Object.keys(value);
-  if (keys.length === 0) return false;
+  if (keys.length === 0 || !keys.includes('default')) return false;
   if (!keys.every((key) => ALLOWED_STATE_SET.has(key))) return false;
 
   return keys.every((key) => isEditableStyleSet(value[key]));
 }
 
-export function normalizeToStateful(value: StyleConfigValue): StatefulStyleSet {
-  if (isStatefulStyle(value)) {
-    return value;
-  }
-
+export function createEmptyStatefulStyleSet(): StatefulStyleSet {
   return {
-    default: isEditableStyleSet(value) ? value : {},
+    default: {},
   };
 }
 
-export function getStateStyles(value: StyleConfigValue | undefined, state: RuntimeStyleState): EditableStyleSet {
+export function getStateStyles(value: StatefulStyleSet | undefined, state: RuntimeStyleState): EditableStyleSet {
   if (!value) return {};
-  const normalized = normalizeToStateful(value);
-  return normalized[state] || {};
+  return value[state] || {};
 }
 
-export function getDefinedStates(value: StyleConfigValue | undefined): RuntimeStyleState[] {
+export function getDefinedStates(value: StatefulStyleSet | undefined): RuntimeStyleState[] {
   if (!value) return [];
-  const normalized = normalizeToStateful(value);
-  return RUNTIME_STYLE_STATES.filter((state) => normalized[state] && Object.keys(normalized[state] || {}).length > 0);
+  return RUNTIME_STYLE_STATES.filter((state) => Object.keys(value[state] || {}).length > 0);
 }
 
-export function updateDefaultState(value: StyleConfigValue | undefined, patch: EditableStyleSet): StyleConfigValue {
-  if (!value || isEditableStyleSet(value)) {
-    return {
-      ...(isEditableStyleSet(value) ? value : {}),
-      ...patch,
-    };
-  }
-
+export function updateDefaultState(value: StatefulStyleSet | undefined, patch: EditableStyleSet): StatefulStyleSet {
+  const nextValue = value ?? createEmptyStatefulStyleSet();
   return {
-    ...value,
+    ...nextValue,
     default: {
-      ...(value.default || {}),
+      ...(nextValue.default || {}),
       ...patch,
     },
   };
 }
 
-export function updateStateStyles(value: StyleConfigValue | undefined, state: RuntimeStyleState, patch: EditableStyleSet): StyleConfigValue {
+export function updateStateStyles(value: StatefulStyleSet | undefined, state: RuntimeStyleState, patch: EditableStyleSet): StatefulStyleSet {
   if (state === 'default') {
     return updateDefaultState(value, patch);
   }
 
-  const normalized = normalizeToStateful(value || {});
+  const normalized = value ?? createEmptyStatefulStyleSet();
   return {
     ...normalized,
     [state]: {
@@ -80,14 +68,8 @@ export function updateStateStyles(value: StyleConfigValue | undefined, state: Ru
   };
 }
 
-export function removeFromDefaultState(value: StyleConfigValue | undefined, keys: AllowedStyleKey[]): StyleConfigValue | undefined {
+export function removeFromDefaultState(value: StatefulStyleSet | undefined, keys: AllowedStyleKey[]): StatefulStyleSet | undefined {
   if (!value) return undefined;
-
-  if (isEditableStyleSet(value)) {
-    const next = { ...value };
-    keys.forEach((key) => delete next[key]);
-    return next;
-  }
 
   const nextDefault = { ...(value.default || {}) };
   keys.forEach((key) => delete nextDefault[key]);
@@ -97,13 +79,13 @@ export function removeFromDefaultState(value: StyleConfigValue | undefined, keys
   };
 }
 
-export function removeFromState(value: StyleConfigValue | undefined, state: RuntimeStyleState, keys: AllowedStyleKey[]): StyleConfigValue | undefined {
+export function removeFromState(value: StatefulStyleSet | undefined, state: RuntimeStyleState, keys: AllowedStyleKey[]): StatefulStyleSet | undefined {
   if (!value) return undefined;
   if (state === 'default') {
     return removeFromDefaultState(value, keys);
   }
 
-  const normalized = normalizeToStateful(value);
+  const normalized = value;
   const nextState = { ...(normalized[state] || {}) };
   keys.forEach((key) => delete nextState[key]);
 
@@ -113,20 +95,17 @@ export function removeFromState(value: StyleConfigValue | undefined, state: Runt
   };
 }
 
-export function copyStateFromDefault(value: StyleConfigValue | undefined, destinationState: RuntimeStyleState): StyleConfigValue {
+export function copyStateFromDefault(value: StatefulStyleSet | undefined, destinationState: RuntimeStyleState): StatefulStyleSet {
+  const normalized = value ?? createEmptyStatefulStyleSet();
+
   if (destinationState === 'default') {
-    return value && isStatefulStyle(value) ? value : normalizeToStateful(value || {});
+    return normalized;
   }
 
-  const normalized = normalizeToStateful(value || {});
   return {
     ...normalized,
     [destinationState]: {
       ...(normalized.default || {}),
     },
   };
-}
-
-export function canUseIncrementalDefaultMessages(value: StyleConfigValue | undefined, state: RuntimeStyleState): boolean {
-  return state === 'default' && (!value || isEditableStyleSet(value));
 }

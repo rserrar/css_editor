@@ -34,7 +34,7 @@ export type AllowedStyleKey = (typeof ALLOWED_CSS_PROPERTIES)[number];
 export interface EditableStyleSet extends Partial<Record<AllowedStyleKey, string>> {}
 
 export interface StatefulStyleSet {
-  default?: EditableStyleSet;
+  default: EditableStyleSet;
   hover?: EditableStyleSet;
   focus?: EditableStyleSet;
   active?: EditableStyleSet;
@@ -43,11 +43,7 @@ export interface StatefulStyleSet {
   open?: EditableStyleSet;
 }
 
-export type StyleConfigValue = EditableStyleSet | StatefulStyleSet;
-
-export interface StyleConfig {
-  [target: string]: StyleConfigValue;
-}
+export type StyleConfig = Record<string, StatefulStyleSet>;
 
 export interface ProjectInfo {
   projectId: string;
@@ -97,17 +93,6 @@ export interface ProjectFile {
   config: StyleConfig;
 }
 
-export interface LegacySourcePreview {
-  protocolVersion: number;
-  moduleVersion?: string;
-  url: string;
-  origin?: string;
-  title?: string;
-  siteKey?: string;
-  siteName?: string;
-  knownTargets?: string[];
-}
-
 // Missatges del protocol
 export type MessageSource = 'editor' | 'preview';
 
@@ -144,7 +129,5 @@ export type ProtocolMessage =
   | { type: 'hello' } & BaseMessage
   | { type: 'config:request' } & BaseMessage
   | { type: 'project:load'; project: ProjectInfo } & BaseMessage
-  | { type: 'style:update'; target: string; styles: EditableStyleSet } & BaseMessage
-  | { type: 'style:remove'; target: string; keys: AllowedStyleKey[] } & BaseMessage
   | { type: 'highlight'; target: string | null } & BaseMessage
   | { type: 'config:replaceAll'; config: StyleConfig } & BaseMessage;

@@ -51,7 +51,7 @@ describe('styleValidators', () => {
     expect(buildStructuredStyleValue('borderRadius', 'abc', 'px').isValid).toBe(false);
   });
 
-  it('keeps legacy invalid values detectable without crashing', () => {
+  it('keeps invalid values detectable without crashing', () => {
     const result = validateStyleValue('fontSize', 'large');
 
     expect(result.isValid).toBe(false);

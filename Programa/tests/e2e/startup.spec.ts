@@ -1,4 +1,4 @@
-const { test, expect } = require('playwright/test');
+import { test, expect } from '@playwright/test';
 
 test('editor and preview connect on same origin', async ({ browser }) => {
   const context = await browser.newContext();
@@ -42,7 +42,7 @@ test('editor and preview connect on same origin', async ({ browser }) => {
   await colorInput.fill('#ff0000');
   await editor.waitForTimeout(500);
 
-  await expect(preview.locator('[data-editable="home.title"]')).toHaveCSS('color', 'rgb(255, 0, 0)');
+  await expect(preview.locator('[data-editable-scope="home.hero"][data-editable="home.title"]')).toHaveCSS('color', 'rgb(255, 0, 0)');
 
   await context.close();
 });
