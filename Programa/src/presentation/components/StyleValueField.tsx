@@ -30,23 +30,77 @@ function normalizeComparableValue(property: AllowedStyleKey, rawValue: string): 
   return normalized.toLowerCase();
 }
 
+function toHexByte(value: number): string {
+  return value.toString(16).padStart(2, '0');
+}
+
+function rgbLikeToHex(value: string): string | null {
+  const normalized = value.trim().toLowerCase();
+  const match = normalized.match(/^rgba?\(([^)]+)\)$/);
+  if (!match) return null;
+
+  const channels = match[1].split(',').map((part) => part.trim());
+  if (channels.length < 3) return null;
+
+  const r = Number(channels[0]);
+  const g = Number(channels[1]);
+  const b = Number(channels[2]);
+  if (![r, g, b].every((channel) => Number.isFinite(channel) && channel >= 0 && channel <= 255)) {
+    return null;
+  }
+
+  return `#${toHexByte(Math.round(r))}${toHexByte(Math.round(g))}${toHexByte(Math.round(b))}`;
+}
+
+function isLikelyComputedPx(value: string): boolean {
+  return /^-?\d+(?:\.\d+)?px$/i.test(value.trim());
+}
+
+function inferOriginalUnitHint(value: string): string | null {
+  const normalized = value.trim().toLowerCase();
+  const match = normalized.match(/^(-?\d+(?:\.\d+)?)px$/);
+  if (!match) return null;
+
+  const px = Number(match[1]);
+  if (!Number.isFinite(px)) return null;
+
+  const decimals = (match[1].split('.')[1] || '').length;
+  const looksNormalized = decimals >= 2;
+  if (!looksNormalized) return null;
+
+  const candidateBases = [16, 15, 14, 18, 20];
+  for (const base of candidateBases) {
+    const em = px / base;
+    const rounded1 = Math.round(em * 10) / 10;
+    const rounded2 = Math.round(em * 100) / 100;
+    const near1 = Math.abs(em - rounded1) <= 0.02;
+    const near2 = Math.abs(em - rounded2) <= 0.006;
+    if (near1 || near2) {
+      return rounded1 % 1 === 0 ? `${rounded1.toFixed(0)}em` : `${rounded1.toFixed(1)}em`;
+    }
+  }
+
+  return null;
+}
+
 export function StyleValueField({ property, value, computedValue, onChange, onRemove }: Props) {
   const { t } = useTranslation();
   const schema = getStyleSchema(property);
-  const validation = useMemo(() => validateStyleValue(property, value), [property, value]);
-  const structuredValue = useMemo(() => parseStructuredStyleValue(property, value), [property, value]);
   const isActive = Boolean(value);
+  const displayValue = value || (!isActive && computedValue ? computedValue : '');
+  const validation = useMemo(() => validateStyleValue(property, value), [property, value]);
+  const structuredValue = useMemo(() => parseStructuredStyleValue(property, displayValue), [property, displayValue]);
   const fallbackValue = schema.defaultValue || '';
 
-  const [textDraft, setTextDraft] = useState(value || '');
+  const [textDraft, setTextDraft] = useState(displayValue);
   const [numberDraft, setNumberDraft] = useState(structuredValue.number);
   const [unitDraft, setUnitDraft] = useState(structuredValue.unit || schema.units?.[0] || '');
   const [lastKnownValue, setLastKnownValue] = useState(value || fallbackValue);
 
   useEffect(() => {
-    setTextDraft(value || '');
+    setTextDraft(displayValue);
     setLastKnownValue(value || fallbackValue);
-  }, [value, fallbackValue]);
+  }, [displayValue, value, fallbackValue]);
 
   useEffect(() => {
     setNumberDraft(structuredValue.number);
@@ -68,6 +122,7 @@ export function StyleValueField({ property, value, computedValue, onChange, onRe
     const baseComparable = normalizeComparableValue(property, computedValue);
     return currentComparable === baseComparable ? 'matches' : 'overrides';
   }, [computedValue, isActive, property, value]);
+  const unitHint = useMemo(() => (computedValue ? inferOriginalUnitHint(computedValue) : null), [computedValue]);
 
   const handleReset = () => {
     const nextValue = lastKnownValue || fallbackValue;
@@ -82,7 +137,8 @@ export function StyleValueField({ property, value, computedValue, onChange, onRe
       return;
     }
 
-    const nextValue = lastKnownValue || fallbackValue;
+    const computedCandidate = computedValue ? validateStyleValue(property, computedValue) : null;
+    const nextValue = (computedCandidate && computedCandidate.isValid ? computedCandidate.normalizedValue : '') || lastKnownValue || fallbackValue;
     if (nextValue) {
       onChange(nextValue);
     }
@@ -113,7 +169,10 @@ export function StyleValueField({ property, value, computedValue, onChange, onRe
       </div>
       {computedValue ? (
         <div className="flex items-center justify-between gap-2 text-[12px]">
-          <div className="text-text-muted font-mono">{t('editor.baseValue')}: {computedValue}</div>
+          <div className="text-text-muted font-mono">
+            {t('editor.baseValue')}: {computedValue} <span className="uppercase tracking-wide">({t('editor.computedValueTag')})</span>
+            {unitHint ? <span className="ml-2">{t('editor.probableOriginalUnit')}: {unitHint}</span> : null}
+          </div>
           {comparisonState ? (
             <span
               className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide ${
@@ -141,17 +200,17 @@ export function StyleValueField({ property, value, computedValue, onChange, onRe
   );
 
   if (schema.type === 'select') {
-    const hasLegacyValue = Boolean(value) && !schema.options?.includes(value);
+    const hasLegacyValue = Boolean(displayValue) && !schema.options?.includes(displayValue);
 
     return renderControls(
       <select
         aria-label={property}
         className="w-full px-2 py-1.5 text-[13px] border border-border rounded bg-white focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all"
-        value={value || ''}
+        value={displayValue || ''}
         onChange={(e) => onChange(e.target.value)}
       >
         <option value="">{t('editor.selectOption')}</option>
-        {hasLegacyValue && <option value={value}>{value}</option>}
+        {hasLegacyValue && <option value={displayValue}>{displayValue}</option>}
         {schema.options?.map((option) => (
           <option key={option} value={option}>{option}</option>
         ))}
@@ -160,7 +219,9 @@ export function StyleValueField({ property, value, computedValue, onChange, onRe
   }
 
   if (schema.type === 'color') {
-    const normalizedHex = isHexColor(value) ? normalizeColorValue(value) : schema.defaultValue || '#000000';
+    const normalizedHex = isHexColor(displayValue)
+      ? normalizeColorValue(displayValue)
+      : rgbLikeToHex(displayValue) || schema.defaultValue || '#000000';
 
     return renderControls(
       <div className="flex items-center gap-2">
@@ -197,7 +258,7 @@ export function StyleValueField({ property, value, computedValue, onChange, onRe
   }
 
   if (schema.type === 'size' || schema.type === 'spacing') {
-    if (value && !structuredValue.isValid) {
+    if (displayValue && !structuredValue.isValid) {
       return renderControls(
         <input
           type="text"

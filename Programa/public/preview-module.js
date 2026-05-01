@@ -302,7 +302,26 @@
     };
 
     if (openerWindow && !openerWindow.closed) {
-      openerWindow.postMessage(message, openerOrigin || '*');
+      const preferredOrigin = openerOrigin || '*';
+      try {
+        openerWindow.postMessage(message, preferredOrigin);
+      } catch (error) {
+        warnLog('postMessage failed with preferred origin, retrying with wildcard', {
+          type,
+          preferredOrigin,
+          error: error instanceof Error ? error.message : String(error),
+        });
+
+        try {
+          openerWindow.postMessage(message, '*');
+        } catch (retryError) {
+          warnLog('postMessage retry failed', {
+            type,
+            error: retryError instanceof Error ? retryError.message : String(retryError),
+          });
+          return;
+        }
+      }
     } else {
       warnLog('Cannot send message before opener transport init', type);
       return;

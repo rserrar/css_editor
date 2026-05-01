@@ -121,11 +121,33 @@ describe('StyleValueField', () => {
     expect(onChange).toHaveBeenCalledWith('#00ff00');
   });
 
+  it('uses computed rgb color as picker value when property is disabled', () => {
+    renderField({ property: 'color', value: '', computedValue: 'rgb(255, 0, 0)' });
+
+    expect((screen.getByLabelText('color-picker') as HTMLInputElement).value.toLowerCase()).toBe('#ff0000');
+  });
+
   it('shows computed base value as guidance when field is disabled', () => {
     renderField({ property: 'fontSize', value: '', computedValue: '18px' });
 
     expect(screen.getByText('Base: 18px')).toBeTruthy();
+    expect(screen.getByText('(computat)')).toBeTruthy();
     expect(screen.getByText('base activa')).toBeTruthy();
+    expect((screen.getByLabelText('fontSize-number') as HTMLInputElement).value).toBe('18');
+  });
+
+  it('shows probable original unit hint for decimal computed px values', () => {
+    renderField({ property: 'fontSize', value: '', computedValue: '14.55px' });
+
+    expect(screen.getByText(/unitat probable/i)).toBeTruthy();
+    expect(screen.getByText(/0.9em/i)).toBeTruthy();
+  });
+
+  it('enables property using computed value when available', () => {
+    const { onChange } = renderField({ property: 'fontSize', value: '', computedValue: '18px' });
+
+    fireEvent.click(screen.getByLabelText('fontSize-enabled'));
+    expect(onChange).toHaveBeenCalledWith('18px');
   });
 
   it('keeps showing computed base value while editing active fields', () => {

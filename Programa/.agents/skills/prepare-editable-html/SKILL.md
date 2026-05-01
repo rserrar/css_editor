@@ -16,6 +16,33 @@ La font de veritat d'aquest document es el codi actual del projecte, especialmen
 - `src/domain/models.ts`
 - `public/example-web.html`
 
+## Abans de començar (critic)
+
+Aquestes condicions son necessaries perque la connexio editor + preview funcioni en webs reals:
+
+1. la preview s'ha d'obrir des de l'editor (no manualment) per mantenir la referencia de finestra
+2. la URL de la preview ha de portar `?session=...` (l'editor la posa automaticament)
+3. la pagina editable ha de carregar `preview-module.js`
+4. si la web es `https`, el `preview-module.js` tambe s'ha de servir per `https`
+
+Important de produccio:
+
+- no enllacis `https://la-teva-web` amb un script `http://localhost:3000/preview-module.js`
+- els navegadors bloquegen aquest cas per mixed content
+- allotja una copia de `preview-module.js` al mateix entorn de la web (mateix protocol `https`)
+
+Exemple recomanat:
+
+```html
+<script
+  src="/preview-module.js"
+  data-site-key="client-marketing-site"
+  data-site-name="Client Marketing Site"
+></script>
+```
+
+`data-site-key` i `data-site-name` son opcionals pero recomanats per identificacio.
+
 ## Resum rapid per a desenvolupadors
 
 - cada element editable ha de tenir `data-editable-scope` i `data-editable` al mateix node
@@ -158,6 +185,33 @@ Problema: els estats no formen part de `data-editable`.
 ```
 
 Problema: `scope` i `target` no poden contenir el separador `/` internament.
+
+## Integracio minima completa (plantilla)
+
+Si comences de zero, aquesta es la base minima funcional:
+
+```html
+<!doctype html>
+<html lang="ca">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Pagina editable</title>
+  </head>
+  <body>
+    <h1 data-editable-scope="home.hero" data-editable="hero.title">Benvinguts</h1>
+    <a data-editable-scope="home.hero" data-editable="hero.cta" href="/contacte">Contacta</a>
+
+    <script
+      src="/preview-module.js"
+      data-site-key="demo-site"
+      data-site-name="Demo Site"
+    ></script>
+  </body>
+</html>
+```
+
+Despres, obre l'editor i posa la URL d'aquesta pagina. L'editor obre la preview amb la sessio correcta.
 
 ## Patrons habituals
 
@@ -459,6 +513,11 @@ Comprova que no existeixin casos com:
 5. selecciona un target repetit i verifica que es ressalten o s'actualitzen tots els nodes equivalents
 6. prova `hover`, `focus`, `selected` i `open` en components que els facin servir
 
+Nota practica:
+
+- si obres la preview manualment en una altra pestanya i no des de l'editor, pots tenir errors de `postMessage` per origen o finestra incorrecta
+- en cas de dubte, tanca popups antigues i torna a iniciar el flux des de l'editor
+
 ### Prova de senyals semantiques
 
 - `selected`: comprova un node amb `aria-selected="true"` o `aria-current="page"`
@@ -539,6 +598,24 @@ Solucio:
 
 ```html
 <button data-editable-scope="tabs.main" data-editable="tab.option" aria-selected="true">Mensual</button>
+```
+
+### Error: carregar el script de preview amb protocol incorrecte
+
+Problema tipic:
+
+```html
+<!-- Pagina en https -->
+<script src="http://localhost:3000/preview-module.js"></script>
+```
+
+Conseqüencia: el navegador el bloqueja (mixed content) i la preview no connecta.
+
+Solucio:
+
+```html
+<!-- Serveix el script en https al mateix entorn -->
+<script src="/preview-module.js"></script>
 ```
 
 ### Error: usar un element no deshabilitable per provar `disabled`
